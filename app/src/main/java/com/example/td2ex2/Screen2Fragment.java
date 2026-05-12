@@ -99,36 +99,49 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
     private ArrayList<Issue> createDefaultIssues() {
         ArrayList<Issue> list = new ArrayList<>();
 
-        AccidentFactory urbanFactory = new UrbanFactory();
-        AccidentFactory highwayFactory = new HighwayFactory();
-
-        Issue issue1 = highwayFactory.createIssue(
+        Issue issue1 = new HighwayIssue(
                 "Collision entre véhicules",
-                "Accident signalé sur une voie principale avec circulation ralentie. Blessés possibles."
+                "Accident signalé sur la voie rapide avec circulation ralentie. Blessés possibles.",
+                Issue.Priority.CRITICAL,
+                2f,
+                0,
+                43.6654,
+                7.2146
         );
-        issue1.setPriority(Issue.Priority.CRITICAL);
-        issue1.setStatus(2f);
+        issue1.addObserver(EmergencyService.getInstance());
 
-        Issue issue2 = urbanFactory.createIssue(
+        Issue issue2 = new UrbanIssue(
                 "Piéton / Cycliste",
-                "Incident impliquant un usager vulnérable à proximité d’un carrefour."
+                "Incident impliquant un usager vulnérable à proximité d’un carrefour.",
+                Issue.Priority.HIGH,
+                1f,
+                0,
+                43.7009,
+                7.2684
         );
-        issue2.setPriority(Issue.Priority.HIGH);
-        issue2.setStatus(1f);
+        issue2.addObserver(EmergencyService.getInstance());
 
-        Issue issue3 = highwayFactory.createIssue(
+        Issue issue3 = new HighwayIssue(
                 "Plusieurs véhicules",
-                "Accrochage multiple provoquant un bouchon important sur autoroute."
+                "Accrochage multiple provoquant un bouchon important sur autoroute.",
+                Issue.Priority.CRITICAL,
+                3f,
+                0,
+                43.6708,
+                7.2076
         );
-        issue3.setPriority(Issue.Priority.CRITICAL);
-        issue3.setStatus(3f);
+        issue3.addObserver(EmergencyService.getInstance());
 
-        Issue issue4 = urbanFactory.createIssue(
+        Issue issue4 = new UrbanIssue(
                 "Signalisation défaillante",
-                "Feux de circulation hors service à un croisement."
+                "Feux de circulation hors service à un croisement.",
+                Issue.Priority.MEDIUM,
+                1f,
+                0,
+                43.7034,
+                7.2663
         );
-        issue4.setPriority(Issue.Priority.MEDIUM);
-        issue4.setStatus(1f);
+        issue4.addObserver(EmergencyService.getInstance());
 
         list.add(issue1);
         list.add(issue2);

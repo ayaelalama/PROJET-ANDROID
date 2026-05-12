@@ -8,8 +8,9 @@ public class HighwayIssue extends Issue {
         super(title, description, priority, status);
     }
 
-    public HighwayIssue(String title, String description, Priority priority, float status, int drawable) {
-        super(title, description, priority, status, drawable);
+    public HighwayIssue(String title, String description, Priority priority, float status,
+                        int drawable, double latitude, double longitude) {
+        super(title, description, priority, status, drawable, latitude, longitude);
     }
 
     protected HighwayIssue(Parcel in) {

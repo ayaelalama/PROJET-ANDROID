@@ -8,7 +8,10 @@ public class UrbanFactory implements AccidentFactory {
                 title,
                 description,
                 Issue.Priority.MEDIUM,
-                1.0f
+                1.0f,
+                0,
+                43.7009,
+                7.2684
         );
 
         issue.addObserver(EmergencyService.getInstance());
