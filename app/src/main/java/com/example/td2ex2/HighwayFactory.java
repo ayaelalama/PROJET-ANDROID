@@ -8,7 +8,10 @@ public class HighwayFactory implements AccidentFactory {
                 title,
                 description,
                 Issue.Priority.CRITICAL,
-                1.0f
+                1.0f,
+                0,
+                43.6654,
+                7.2146
         );
 
         issue.addObserver(EmergencyService.getInstance());

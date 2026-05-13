@@ -14,6 +14,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+
 public class Screen1Fragment extends Fragment {
 
     public static final int FRAGMENT_ID = 0;
@@ -26,8 +32,11 @@ public class Screen1Fragment extends Fragment {
     private TextView detailPriority;
     private TextView detailDescription;
     private TextView detailProtocol;
+    private TextView detailLocationText;
+
     private RatingBar detailRatingBar;
     private ImageView detailPriorityDot;
+    private MapView detailMap;
 
     public Screen1Fragment() {
     }
@@ -35,6 +44,7 @@ public class Screen1Fragment extends Fragment {
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
+
         if (requireActivity() instanceof Notifiable) {
             notifiable = (Notifiable) requireActivity();
         } else {
@@ -44,8 +54,12 @@ public class Screen1Fragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(
+            @NonNull LayoutInflater inflater,
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState
+    ) {
+        Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
         return inflater.inflate(R.layout.fragment_screen1, container, false);
     }
 
@@ -59,9 +73,14 @@ public class Screen1Fragment extends Fragment {
         detailProtocol = view.findViewById(R.id.detailProtocol);
         detailRatingBar = view.findViewById(R.id.detailRatingBar);
         detailPriorityDot = view.findViewById(R.id.detailPriorityDot);
+        detailLocationText = view.findViewById(R.id.detailLocationText);
+        detailMap = view.findViewById(R.id.detailMap);
+
         Button goButton = view.findViewById(R.id.goButton);
 
         detailRatingBar.setIsIndicator(true);
+
+        setupMap();
 
         goButton.setOnClickListener(v -> {
             if (notifiable != null) {
@@ -80,17 +99,50 @@ public class Screen1Fragment extends Fragment {
         }
     }
 
+    private void setupMap() {
+        if (detailMap == null) {
+            return;
+        }
+
+        detailMap.setTileSource(TileSourceFactory.MAPNIK);
+        detailMap.setMultiTouchControls(true);
+        detailMap.getController().setZoom(14.5);
+
+        GeoPoint nice = new GeoPoint(43.7009, 7.2684);
+        detailMap.getController().setCenter(nice);
+    }
+
     @Override
     public void onStart() {
         super.onStart();
+
         if (notifiable != null) {
             notifiable.onFragmentDisplayed(FRAGMENT_ID);
         }
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+
+        if (detailMap != null) {
+            detailMap.onResume();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        if (detailMap != null) {
+            detailMap.onPause();
+        }
+    }
+
+    @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
+
         if (currentIssue != null) {
             outState.putParcelable(KEY_CURRENT_ISSUE, currentIssue);
         }
@@ -103,6 +155,14 @@ public class Screen1Fragment extends Fragment {
         detailProtocol.setText("Protocole : aucun");
         detailRatingBar.setRating(0f);
         detailPriorityDot.setImageResource(R.drawable.bg_priority_low);
+        detailLocationText.setText("Localisation GPS : aucune alerte sélectionnée");
+
+        showMapMarker(
+                43.7009,
+                7.2684,
+                "Centre de Nice",
+                "Carte prête pour afficher un accident."
+        );
     }
 
     public void displayIssue(Issue issue) {
@@ -118,19 +178,63 @@ public class Screen1Fragment extends Fragment {
         detailProtocol.setText("Protocole : " + issue.getSafetyProtocol());
         detailRatingBar.setRating(issue.getStatus());
 
+        detailLocationText.setText(
+                "Localisation GPS : "
+                        + issue.getLatitude()
+                        + " / "
+                        + issue.getLongitude()
+        );
+
         switch (issue.getPriority()) {
             case CRITICAL:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_critical);
                 break;
+
             case HIGH:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_high);
                 break;
+
             case MEDIUM:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_medium);
                 break;
+
             case LOW:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_low);
                 break;
         }
+
+        showMapMarker(
+                issue.getLatitude(),
+                issue.getLongitude(),
+                issue.getTitle(),
+                issue.getDescription()
+        );
+    }
+
+    private void showMapMarker(
+            double latitude,
+            double longitude,
+            String title,
+            String description
+    ) {
+        if (detailMap == null) {
+            return;
+        }
+
+        GeoPoint point = new GeoPoint(latitude, longitude);
+
+        detailMap.getOverlays().clear();
+
+        Marker marker = new Marker(detailMap);
+        marker.setPosition(point);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setTitle(title);
+        marker.setSnippet(description);
+
+        detailMap.getOverlays().add(marker);
+
+        detailMap.getController().setZoom(16.0);
+        detailMap.getController().setCenter(point);
+        detailMap.invalidate();
     }
 }
