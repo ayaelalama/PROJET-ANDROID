@@ -1,60 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#21C7E8"
-    android:padding="18dp">
+    android:orientation="vertical"
+    android:background="#21C7E8">
 
-    <LinearLayout
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Localisation de l'accident"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:gravity="center"
-            android:layout_marginBottom="16dp" />
+    <FrameLayout
+        android:id="@+id/menuContainer"
+        android:layout_width="match_parent"
+        android:layout_height="58dp" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Vérifiez l'emplacement affiché avant l'envoi de l'alerte"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="12dp" />
-
-        <org.osmdroid.views.MapView
-            android:id="@+id/accidentMap"
-            android:layout_width="match_parent"
-            android:layout_height="360dp"
-            android:layout_marginBottom="14dp" />
-
-        <TextView
-            android:id="@+id/locationTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Position récupérée automatiquement"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:gravity="center"
-            android:layout_marginBottom="16dp" />
-
-        <Button
-            android:id="@+id/retryButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Réessayer la localisation"
-            android:textAllCaps="false"
-            android:backgroundTint="#6200EE"
-            android:textColor="#FFFFFF" />
-
-    </LinearLayout>
-
-</ScrollView>
+</LinearLayout>
