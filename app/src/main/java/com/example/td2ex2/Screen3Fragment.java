@@ -16,6 +16,11 @@ import android.widget.LinearLayout;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -245,21 +250,43 @@ public class Screen3Fragment extends Fragment {
         addSubtitle("Vérifiez l’emplacement affiché avant l’envoi");
         addSubtitle("Lieu de l’accident :");
 
-        ImageView map = new ImageView(requireContext());
-        map.setImageResource(R.drawable.fond);
-        map.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        map.setBackgroundColor(Color.WHITE);
-        map.setPadding(dp(2), dp(2), dp(2), dp(2));
+        Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
+
+        MapView map = new MapView(requireContext());
+        map.setTileSource(TileSourceFactory.MAPNIK);
+        map.setMultiTouchControls(true);
+
+        double latitude = 43.7009;
+        double longitude = 7.2684;
+
+        GeoPoint accidentPoint = new GeoPoint(latitude, longitude);
+
+        map.getController().setZoom(17.0);
+        map.getController().setCenter(accidentPoint);
+
+        Marker marker = new Marker(map);
+        marker.setPosition(accidentPoint);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setTitle("Lieu de l'accident");
+        marker.setSnippet("Position récupérée automatiquement");
+
+        map.getOverlays().add(marker);
+        map.invalidate();
 
         LinearLayout.LayoutParams mapParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(290)
+                dp(250)
         );
-        mapParams.setMargins(0, dp(8), 0, dp(8));
+        mapParams.setMargins(0, dp(12), 0, dp(12));
+
         formContainer.addView(map, mapParams);
 
-        TextView position = createText("Position récupérée automatiquement", 16,
-                Color.rgb(44, 99, 230), Typeface.NORMAL);
+        TextView position = createText(
+                "Position récupérée automatiquement : " + latitude + " / " + longitude,
+                16,
+                Color.rgb(44, 99, 230),
+                Typeface.NORMAL
+        );
         position.setGravity(Gravity.CENTER);
         formContainer.addView(position, fullParams());
 
@@ -268,6 +295,12 @@ public class Screen3Fragment extends Fragment {
         retry.setAllCaps(false);
         retry.setTextColor(Color.rgb(78, 112, 230));
         retry.setBackground(round(Color.rgb(250, 245, 255), Color.LTGRAY));
+
+        retry.setOnClickListener(v -> {
+            Toast.makeText(requireContext(), "Localisation actualisée", Toast.LENGTH_SHORT).show();
+            map.getController().setCenter(accidentPoint);
+            map.invalidate();
+        });
 
         LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(dp(160), dp(50));
         retryParams.gravity = Gravity.CENTER_HORIZONTAL;
