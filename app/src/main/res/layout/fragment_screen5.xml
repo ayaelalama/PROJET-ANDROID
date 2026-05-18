@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FAFAFA"
+    android:padding="10dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Carte des incidents - MVC"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#111111"
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
+
+    <org.osmdroid.views.MapView
+        android:id="@+id/mvcMapView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.3" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Incidents visibles sur la carte"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#111111"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp" />
+
+    <ListView
+        android:id="@+id/mvcIssueListView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="#DDDDDD"
+        android:dividerHeight="5dp"
+        android:listSelector="@android:color/transparent" />
+
+</LinearLayout>
