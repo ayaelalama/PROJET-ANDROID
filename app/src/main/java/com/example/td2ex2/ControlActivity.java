@@ -91,7 +91,11 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
 
         if (numFragment == Screen3Fragment.FRAGMENT_ID) {
             if (object instanceof Issue) {
-                screen2Fragment.addIssue((Issue) object);
+                Issue newIssue = (Issue) object;
+
+                screen2Fragment.addIssue(newIssue);
+                IssueManager.getInstance().addIssue(newIssue);
+
                 showScreen(1);
             }
         }
