@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -41,7 +42,10 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
+    implementation("com.google.firebase:firebase-messaging:25.0.2")
+    implementation("com.squareup.picasso:picasso:2.8")
     androidTestImplementation(libs.espresso.core)
 }

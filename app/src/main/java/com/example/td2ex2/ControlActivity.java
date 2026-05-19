@@ -5,13 +5,15 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
-public class ControlActivity extends AppCompatActivity implements Notifiable, Menuable {
+public class ControlActivity extends AppCompatActivity implements Notifiable, Menuable, Picturable {
 
     private Screen1Fragment screen1Fragment;
     private Screen2Fragment screen2Fragment;
     private Screen3Fragment screen3Fragment;
     private Screen4Fragment screen4Fragment;
     private MenuFragment menuFragment;
+
+    private Issue selectedIssue;
 
     private int currentScreen = 0;
 
@@ -84,7 +86,8 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
     public void onDataChange(int numFragment, Object object, int actionCode, Object argsAction) {
         if (numFragment == Screen2Fragment.FRAGMENT_ID) {
             if (actionCode == Screen2Fragment.ACTION_ITEM_CLICKED && object instanceof Issue) {
-                screen1Fragment.displayIssue((Issue) object);
+                selectedIssue = (Issue) object;
+                screen1Fragment.displayIssue(selectedIssue);
                 showScreen(0);
             }
         }
@@ -92,6 +95,8 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
         if (numFragment == Screen3Fragment.FRAGMENT_ID) {
             if (object instanceof Issue) {
                 Issue newIssue = (Issue) object;
+
+                selectedIssue = newIssue;
 
                 screen2Fragment.addIssue(newIssue);
                 IssueManager.getInstance().addIssue(newIssue);
@@ -104,5 +109,12 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
     @Override
     public void onFragmentDisplayed(int fragmentId) {
         currentScreen = fragmentId;
+    }
+
+    @Override
+    public void onPictureTaken(String photopath) {
+        if (selectedIssue != null) {
+            selectedIssue.setPicture(photopath);
+        }
     }
 }

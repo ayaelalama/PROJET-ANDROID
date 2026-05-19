@@ -31,17 +31,11 @@ public abstract class Issue implements Parcelable, IssueObservable {
         }
 
         public static Status fromRating(float rating) {
-            if (rating <= 1.5f) {
-                return REPORTED;
-            } else if (rating <= 2.5f) {
-                return CONFIRMED;
-            } else if (rating <= 3.5f) {
-                return ON_SITE;
-            } else if (rating <= 4.5f) {
-                return CLEARING;
-            } else {
-                return RESOLVED;
-            }
+            if (rating <= 1.5f) return REPORTED;
+            else if (rating <= 2.5f) return CONFIRMED;
+            else if (rating <= 3.5f) return ON_SITE;
+            else if (rating <= 4.5f) return CLEARING;
+            else return RESOLVED;
         }
     }
 
@@ -56,6 +50,8 @@ public abstract class Issue implements Parcelable, IssueObservable {
 
     private double latitude;
     private double longitude;
+
+    private String picture;
 
     private transient List<IssueObserver> observers = new ArrayList<>();
 
@@ -82,6 +78,7 @@ public abstract class Issue implements Parcelable, IssueObservable {
         this.drawable = drawable;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.picture = null;
         this.observers = new ArrayList<>();
     }
 
@@ -95,82 +92,66 @@ public abstract class Issue implements Parcelable, IssueObservable {
         drawable = in.readInt();
         latitude = in.readDouble();
         longitude = in.readDouble();
+        picture = in.readString();
         observers = new ArrayList<>();
     }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getTitle() { return title; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getDescription() { return description; }
 
-    public long getTimestamp() {
-        return timestamp;
-    }
+    public long getTimestamp() { return timestamp; }
 
-    public Priority getPriority() {
-        return priority;
-    }
+    public Priority getPriority() { return priority; }
 
     public void setPriority(Priority priority) {
         this.priority = priority;
         notifyPriorityObservers();
     }
 
-    public float getStatus() {
-        return status.getRating();
-    }
+    public float getStatus() { return status.getRating(); }
 
-    public Status getStatusEnum() {
-        return status;
-    }
+    public Status getStatusEnum() { return status; }
 
     public void setStatus(float rating) {
         this.status = Status.fromRating(rating);
         notifyStatusObservers();
     }
 
-    public int getDrawable() {
-        return drawable;
-    }
+    public int getDrawable() { return drawable; }
 
-    public double getLatitude() {
-        return latitude;
-    }
+    public double getLatitude() { return latitude; }
 
-    public double getLongitude() {
-        return longitude;
-    }
+    public double getLongitude() { return longitude; }
 
     public void setLocation(double latitude, double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
+        notifyObservers();
+    }
+
+    public String getPicture() {
+        return picture;
+    }
+
+    public void setPicture(String picture) {
+        this.picture = picture;
+        notifyObservers();
     }
 
     public abstract String getSafetyProtocol();
 
     @Override
     public void addObserver(IssueObserver observer) {
-        if (observers == null) {
-            observers = new ArrayList<>();
-        }
-
-        if (!observers.contains(observer)) {
-            observers.add(observer);
-        }
+        if (observers == null) observers = new ArrayList<>();
+        if (!observers.contains(observer)) observers.add(observer);
     }
 
     @Override
     public void removeObserver(IssueObserver observer) {
-        if (observers != null) {
-            observers.remove(observer);
-        }
+        if (observers != null) observers.remove(observer);
     }
 
     @Override
@@ -180,20 +161,14 @@ public abstract class Issue implements Parcelable, IssueObservable {
     }
 
     private void notifyStatusObservers() {
-        if (observers == null) {
-            observers = new ArrayList<>();
-        }
-
+        if (observers == null) observers = new ArrayList<>();
         for (IssueObserver observer : observers) {
             observer.onStatusChanged(this);
         }
     }
 
     private void notifyPriorityObservers() {
-        if (observers == null) {
-            observers = new ArrayList<>();
-        }
-
+        if (observers == null) observers = new ArrayList<>();
         for (IssueObserver observer : observers) {
             observer.onPriorityChanged(this);
         }
@@ -220,5 +195,6 @@ public abstract class Issue implements Parcelable, IssueObservable {
         dest.writeInt(drawable);
         dest.writeDouble(latitude);
         dest.writeDouble(longitude);
+        dest.writeString(picture);
     }
 }

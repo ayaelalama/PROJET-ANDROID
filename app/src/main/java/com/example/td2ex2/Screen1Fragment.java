@@ -100,9 +100,7 @@ public class Screen1Fragment extends Fragment {
     }
 
     private void setupMap() {
-        if (detailMap == null) {
-            return;
-        }
+        if (detailMap == null) return;
 
         detailMap.setTileSource(TileSourceFactory.MAPNIK);
         detailMap.setMultiTouchControls(true);
@@ -163,6 +161,8 @@ public class Screen1Fragment extends Fragment {
                 "Centre de Nice",
                 "Carte prête pour afficher un accident."
         );
+
+        sendPictureToCameraFragment(null);
     }
 
     public void displayIssue(Issue issue) {
@@ -189,15 +189,12 @@ public class Screen1Fragment extends Fragment {
             case CRITICAL:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_critical);
                 break;
-
             case HIGH:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_high);
                 break;
-
             case MEDIUM:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_medium);
                 break;
-
             case LOW:
                 detailPriorityDot.setImageResource(R.drawable.bg_priority_low);
                 break;
@@ -209,6 +206,18 @@ public class Screen1Fragment extends Fragment {
                 issue.getTitle(),
                 issue.getDescription()
         );
+
+        sendPictureToCameraFragment(issue.getPicture());
+    }
+
+    private void sendPictureToCameraFragment(String path) {
+        Bundle bundle = new Bundle();
+        bundle.putString(CameraFragment.RESULT_PHOTO_PATH, path);
+
+        getChildFragmentManager().setFragmentResult(
+                CameraFragment.RESULT_CHANNEL,
+                bundle
+        );
     }
 
     private void showMapMarker(
@@ -217,9 +226,7 @@ public class Screen1Fragment extends Fragment {
             String title,
             String description
     ) {
-        if (detailMap == null) {
-            return;
-        }
+        if (detailMap == null) return;
 
         GeoPoint point = new GeoPoint(latitude, longitude);
 
