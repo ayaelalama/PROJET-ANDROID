@@ -14,7 +14,6 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
     private MenuFragment menuFragment;
 
     private Issue selectedIssue;
-
     private int currentScreen = 0;
 
     @Override
@@ -28,7 +27,6 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
         screen4Fragment = new Screen4Fragment();
 
         int startScreen = getIntent().getIntExtra("startScreen", 0);
-
         menuFragment = MenuFragment.newInstance(startScreen);
 
         getSupportFragmentManager()
@@ -41,24 +39,15 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
 
     private void showScreen(int index) {
         currentScreen = index;
-
         Fragment fragment;
 
-        if (index == 0) {
-            fragment = screen1Fragment;
-        } else if (index == 1) {
-            fragment = screen2Fragment;
-        } else if (index == 2) {
-            fragment = screen3Fragment;
-        } else if (index == 3) {
-            fragment = screen4Fragment;
-        } else if (index == 4) {
-            fragment = new Screen5Fragment();
-        } else if (index == 5) {
-            fragment = new Screen6Fragment();
-        } else {
-            fragment = new Screen7Fragment();
-        }
+        if (index == 0)      fragment = screen1Fragment;
+        else if (index == 1) fragment = screen2Fragment;
+        else if (index == 2) fragment = screen3Fragment;
+        else if (index == 3) fragment = screen4Fragment;
+        else if (index == 4) fragment = new Screen5Fragment();
+        else if (index == 5) fragment = new Screen6Fragment();
+        else                 fragment = new Screen7Fragment();
 
         getSupportFragmentManager()
                 .beginTransaction()
@@ -95,12 +84,9 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
         if (numFragment == Screen3Fragment.FRAGMENT_ID) {
             if (object instanceof Issue) {
                 Issue newIssue = (Issue) object;
-
                 selectedIssue = newIssue;
-
                 screen2Fragment.addIssue(newIssue);
                 IssueManager.getInstance().addIssue(newIssue);
-
                 showScreen(1);
             }
         }
@@ -111,6 +97,10 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Me
         currentScreen = fragmentId;
     }
 
+    /**
+     * Picturable : reçoit le chemin de la photo depuis CameraFragment.
+     * Met à jour le modèle Issue sélectionné.
+     */
     @Override
     public void onPictureTaken(String photopath) {
         if (selectedIssue != null) {

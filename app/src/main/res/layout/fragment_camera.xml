@@ -12,12 +12,14 @@
         android:layout_width="match_parent"
         android:layout_height="190dp"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_camera_placeholder" />
+        android:src="@drawable/ic_camera_placeholder"
+        android:contentDescription="Aperçu de la photo de l'accident" />
 
     <Button
         android:id="@+id/takePictureButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:text="📷 Prendre / remplacer la photo"
         android:textAllCaps="false" />
 
