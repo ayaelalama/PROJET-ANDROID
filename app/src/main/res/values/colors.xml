@@ -1,10 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Brand colors -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
+    <color name="primary_light">#E3F2FD</color>
+    <color name="accent">#FF5722</color>
+    <color name="accent_light">#FBE9E7</color>
+
+    <!-- Semantic -->
+    <color name="danger">#D32F2F</color>
+    <color name="danger_light">#FFEBEE</color>
+    <color name="warning">#F57C00</color>
+    <color name="warning_light">#FFF3E0</color>
+    <color name="success">#2E7D32</color>
+    <color name="success_light">#E8F5E9</color>
+
+    <!-- Priority colors -->
+    <color name="priority_critical">#D32F2F</color>
+    <color name="priority_high">#F57C00</color>
+    <color name="priority_medium">#FBC02D</color>
+    <color name="priority_low">#388E3C</color>
+
+    <!-- Neutral -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="background">#F5F7FA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#1A1A2E</color>
+    <color name="text_secondary">#5C6370</color>
+    <color name="divider">#E0E4EA</color>
+
+    <!-- Legacy compat -->
     <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF642BFF</color>
+    <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
 </resources>

@@ -13,6 +13,9 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+/**
+ * Pattern Adapter (07) — affiche la liste des incidents avec ViewHolder pattern.
+ */
 public class IssueAdapter extends ArrayAdapter<Issue> {
 
     private final List<Issue> items;
@@ -52,12 +55,13 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
             row = inflater.inflate(R.layout.item_issue, parent, false);
 
             holder = new ViewHolder();
-            holder.priorityIcon = row.findViewById(R.id.issuePriorityImageView);
-            holder.title = row.findViewById(R.id.issueTitleTextView);
-            holder.description = row.findViewById(R.id.issueDescriptionTextView);
-            holder.priority = row.findViewById(R.id.issuePriorityTextView);
-            holder.status = row.findViewById(R.id.issueStatusTextView);
-            holder.ratingBar = row.findViewById(R.id.issueRatingBar);
+            holder.priorityIcon    = row.findViewById(R.id.issuePriorityImageView);
+            holder.title           = row.findViewById(R.id.issueTitleTextView);
+            holder.description     = row.findViewById(R.id.issueDescriptionTextView);
+            holder.priority        = row.findViewById(R.id.issuePriorityTextView);
+            holder.status          = row.findViewById(R.id.issueStatusTextView);
+            holder.ratingBar       = row.findViewById(R.id.issueRatingBar);
+            holder.typeTag         = row.findViewById(R.id.issueTypeTag);
 
             row.setTag(holder);
         } else {
@@ -68,8 +72,16 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
 
         holder.title.setText(issue.getTitle());
         holder.description.setText(issue.getDescription());
-        holder.priority.setText("Gravité : " + issue.getPriority());
-        holder.status.setText("État : " + issue.getStatusEnum());
+        holder.priority.setText("Gravité : " + formatPriority(issue.getPriority()));
+        holder.status.setText(formatStatus(issue.getStatusEnum()));
+
+        // Type tag (Factory pattern visible)
+        if (issue instanceof HighwayIssue) {
+            holder.typeTag.setText("Autoroute");
+        } else {
+            holder.typeTag.setText("Urbain");
+        }
+
         holder.ratingBar.setOnRatingBarChangeListener(null);
         holder.ratingBar.setRating(issue.getStatus());
 
@@ -83,7 +95,7 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
             case MEDIUM:
                 holder.priorityIcon.setImageResource(R.drawable.bg_priority_medium);
                 break;
-            case LOW:
+            default:
                 holder.priorityIcon.setImageResource(R.drawable.bg_priority_low);
                 break;
         }
@@ -99,12 +111,33 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         return row;
     }
 
-    private static class ViewHolder {
+    private String formatPriority(Issue.Priority p) {
+        switch (p) {
+            case CRITICAL: return "🔴 CRITIQUE";
+            case HIGH:     return "🟠 ÉLEVÉE";
+            case MEDIUM:   return "🟡 MOYENNE";
+            default:       return "🟢 FAIBLE";
+        }
+    }
+
+    private String formatStatus(Issue.Status s) {
+        switch (s) {
+            case REPORTED:  return "📡 Signalé";
+            case CONFIRMED: return "✅ Confirmé";
+            case ON_SITE:   return "🚑 Sur place";
+            case CLEARING:  return "🔧 En cours";
+            case RESOLVED:  return "☑ Résolu";
+            default:        return s.name();
+        }
+    }
+
+    static class ViewHolder {
         ImageView priorityIcon;
         TextView title;
         TextView description;
         TextView priority;
         TextView status;
         RatingBar ratingBar;
+        TextView typeTag;
     }
 }

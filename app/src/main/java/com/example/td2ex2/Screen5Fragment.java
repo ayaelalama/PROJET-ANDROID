@@ -16,18 +16,22 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.views.MapView;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Screen 5 — Carte + liste MVC.
+ * Architecture MVC/MVP/MVVM (10) :
+ *   Model   = IssueManager (Singleton + ModelObservable)
+ *   View    = ce fragment (ViewObserver)
+ *   Controller = IssueController
+ */
 public class Screen5Fragment extends Fragment implements ViewObserver, ClickableIssue<Issue> {
 
     public static final int FRAGMENT_ID = 4;
 
     private Notifiable notifiable;
-
     private IssueManager model;
     private IssueController controller;
-
     private MapView mapView;
     private ListView listView;
     private IssueAdapter adapter;
@@ -45,16 +49,12 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-
-        if (context instanceof Notifiable) {
-            notifiable = (Notifiable) context;
-        }
+        if (context instanceof Notifiable) notifiable = (Notifiable) context;
     }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_screen5, container, false);
     }
@@ -65,7 +65,7 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
 
         Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
 
-        mapView = view.findViewById(R.id.mvcMapView);
+        mapView  = view.findViewById(R.id.mvcMapView);
         listView = view.findViewById(R.id.mvcIssueListView);
 
         mapView.setTileSource(TileSourceFactory.MAPNIK);
@@ -75,7 +75,6 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
         listView.setAdapter(adapter);
 
         model.addObserver(this);
-
         refreshMap(model.getIssues());
 
         if (!model.getIssues().isEmpty()) {
@@ -86,23 +85,14 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
     @Override
     public void onStart() {
         super.onStart();
-
-        if (notifiable != null) {
-            notifiable.onFragmentDisplayed(FRAGMENT_ID);
-        }
-
-        if (mapView != null) {
-            mapView.onResume();
-        }
+        if (notifiable != null) notifiable.onFragmentDisplayed(FRAGMENT_ID);
+        if (mapView != null) mapView.onResume();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-
-        if (mapView != null) {
-            mapView.onPause();
-        }
+        if (mapView != null) mapView.onPause();
     }
 
     @Override
@@ -113,35 +103,28 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
 
     private void refreshMap(List<Issue> issues) {
         mapView.getOverlays().clear();
-
         for (Issue issue : issues) {
             mapView.getOverlays().add(controller.createMarker(mapView, issue));
         }
-
         mapView.invalidate();
-
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-        }
+        if (adapter != null) adapter.notifyDataSetChanged();
     }
 
     @Override
     public void onModelChanged(List<Issue> issues) {
         refreshMap(issues);
-        Toast.makeText(requireContext(), "Position de l'incident mise à jour", Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(), "Carte mise à jour", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onRatingBarChange(int itemIndex, float value, IssueAdapter adapter, List<Issue> items) {
-        Issue issue = items.get(itemIndex);
-        issue.setStatus(value);
+        items.get(itemIndex).setStatus(value);
         adapter.notifyDataSetChanged();
     }
 
     @Override
     public void onClickItem(List<Issue> items, int itemIndex) {
-        Issue issue = items.get(itemIndex);
-        controller.centerMapOnIssue(mapView, issue);
+        controller.centerMapOnIssue(mapView, items.get(itemIndex));
     }
 
     @Override

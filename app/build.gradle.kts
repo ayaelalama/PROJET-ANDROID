@@ -5,11 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.td2ex2"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.td2ex2"
@@ -44,8 +40,8 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     implementation("com.squareup.picasso:picasso:2.8")
     implementation(libs.firebase.messaging)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
-    implementation("com.squareup.picasso:picasso:2.8")
     androidTestImplementation(libs.espresso.core)
 }

@@ -27,15 +27,17 @@ public class MainActivity extends AppCompatActivity {
         animationImageView.setImageResource(R.drawable.animation);
         animationDrawable = (AnimationDrawable) animationImageView.getDrawable();
 
+        // "Signaler un accident" → ouvre le flow de signalement (Screen3)
         defaultButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ControlActivity.class);
-            intent.putExtra("startScreen", 2);
+            intent.putExtra("startScreen", 2); // Screen3 = signalement
             startActivity(intent);
         });
 
+        // "Interface Secours" → ouvre la vue détail secours (Screen1)
         optionButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ControlActivity.class);
-            intent.putExtra("startScreen", 1);
+            intent.putExtra("startScreen", 0); // Screen1 = détail secours
             startActivity(intent);
         });
     }

@@ -12,6 +12,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+/**
+ * Screen 4 — Journal des alertes du service de secours.
+ * Pattern Observer (09) : écoute EmergencyService.AlertListener.
+ * Singleton (09) : EmergencyService.getInstance().
+ */
 public class Screen4Fragment extends Fragment {
 
     public static final int FRAGMENT_ID = 3;
@@ -25,13 +30,11 @@ public class Screen4Fragment extends Fragment {
         }
     };
 
-    public Screen4Fragment() {
-    }
+    public Screen4Fragment() {}
 
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-
         if (requireActivity() instanceof Notifiable) {
             notifiable = (Notifiable) requireActivity();
         }
@@ -39,11 +42,8 @@ public class Screen4Fragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater,
-            @Nullable ViewGroup container,
-            @Nullable Bundle savedInstanceState
-    ) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_screen4, container, false);
     }
 
@@ -55,20 +55,14 @@ public class Screen4Fragment extends Fragment {
         alertsTextView.setText(EmergencyService.getInstance().getAlertsText());
 
         refreshButton.setOnClickListener(v ->
-                alertsTextView.setText(EmergencyService.getInstance().getAlertsText())
-        );
+                alertsTextView.setText(EmergencyService.getInstance().getAlertsText()));
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
         EmergencyService.getInstance().addAlertListener(alertListener);
-
-        if (notifiable != null) {
-            notifiable.onFragmentDisplayed(FRAGMENT_ID);
-        }
-
+        if (notifiable != null) notifiable.onFragmentDisplayed(FRAGMENT_ID);
         if (alertsTextView != null) {
             alertsTextView.setText(EmergencyService.getInstance().getAlertsText());
         }

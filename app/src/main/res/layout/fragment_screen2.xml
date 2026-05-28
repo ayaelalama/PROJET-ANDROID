@@ -1,43 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/fond"
-        android:scaleType="centerCrop" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#CCEB8C1C" />
-
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/primary"
+        android:padding="16dp">
 
         <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Incidents signalés"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/incidentCountText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Incidents signalés"
-            android:textColor="@android:color/white"
-            android:textStyle="bold"
-            android:textSize="24sp"
-            android:layout_marginBottom="10dp" />
-
-        <ListView
-            android:id="@+id/issueListView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:divider="#55FFFFFF"
-            android:dividerHeight="6dp"
-            android:listSelector="@android:color/transparent"
-            android:cacheColorHint="@android:color/transparent"
-            android:scrollbars="none" />
+            android:text="0 incident"
+            android:textColor="#B3E5FC"
+            android:textSize="13sp" />
 
     </LinearLayout>
-</FrameLayout>
+
+    <ListView
+        android:id="@+id/issueListView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:listSelector="@android:color/transparent"
+        android:cacheColorHint="@android:color/transparent"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        android:scrollbars="none" />
+
+</LinearLayout>

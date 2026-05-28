@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +15,11 @@ import androidx.fragment.app.Fragment;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Screen 2 — Liste des incidents signalés.
+ * Pattern Adapter (07) via IssueAdapter.
+ * Parcelable (02) : la liste est sauvegardée/restaurée via Bundle.
+ */
 public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
 
     public static final int FRAGMENT_ID = 1;
@@ -25,14 +31,13 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
     private Notifiable notifiable;
     private ArrayList<Issue> issues;
     private IssueAdapter adapter;
+    private TextView incidentCountText;
 
-    public Screen2Fragment() {
-    }
+    public Screen2Fragment() {}
 
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-
         if (requireActivity() instanceof Notifiable) {
             notifiable = (Notifiable) requireActivity();
         } else {
@@ -51,6 +56,8 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        incidentCountText = view.findViewById(R.id.incidentCountText);
+
         if (savedInstanceState != null) {
             issues = savedInstanceState.getParcelableArrayList(KEY_ISSUES);
         }
@@ -66,15 +73,14 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
         ListView listView = view.findViewById(R.id.issueListView);
         adapter = new IssueAdapter(this, issues);
         listView.setAdapter(adapter);
+
+        updateCount();
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
-        if (notifiable != null) {
-            notifiable.onFragmentDisplayed(FRAGMENT_ID);
-        }
+        if (notifiable != null) notifiable.onFragmentDisplayed(FRAGMENT_ID);
     }
 
     @Override
@@ -84,70 +90,43 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
     }
 
     public void addIssue(Issue issue) {
-        if (issues == null) {
-            issues = createDefaultIssues();
-        }
-
+        if (issues == null) issues = createDefaultIssues();
         issue.addObserver(EmergencyService.getInstance());
         issues.add(0, issue);
+        if (adapter != null) adapter.notifyDataSetChanged();
+        updateCount();
+    }
 
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
+    private void updateCount() {
+        if (incidentCountText != null && issues != null) {
+            incidentCountText.setText(issues.size() + " incident" + (issues.size() > 1 ? "s" : ""));
         }
     }
 
     private ArrayList<Issue> createDefaultIssues() {
         ArrayList<Issue> list = new ArrayList<>();
 
-        Issue issue1 = new HighwayIssue(
-                "Collision entre véhicules",
+        Issue i1 = new HighwayIssue("Collision entre véhicules",
                 "Accident signalé sur la voie rapide avec circulation ralentie. Blessés possibles.",
-                Issue.Priority.CRITICAL,
-                2f,
-                0,
-                43.6654,
-                7.2146
-        );
-        issue1.addObserver(EmergencyService.getInstance());
+                Issue.Priority.CRITICAL, 2f, 0, 43.6654, 7.2146);
+        i1.addObserver(EmergencyService.getInstance());
 
-        Issue issue2 = new UrbanIssue(
-                "Piéton / Cycliste",
-                "Incident impliquant un usager vulnérable à proximité d’un carrefour.",
-                Issue.Priority.HIGH,
-                1f,
-                0,
-                43.7009,
-                7.2684
-        );
-        issue2.addObserver(EmergencyService.getInstance());
+        Issue i2 = new UrbanIssue("Piéton / Cycliste",
+                "Incident impliquant un usager vulnérable à proximité d'un carrefour.",
+                Issue.Priority.HIGH, 1f, 0, 43.7009, 7.2684);
+        i2.addObserver(EmergencyService.getInstance());
 
-        Issue issue3 = new HighwayIssue(
-                "Plusieurs véhicules",
+        Issue i3 = new HighwayIssue("Plusieurs véhicules",
                 "Accrochage multiple provoquant un bouchon important sur autoroute.",
-                Issue.Priority.CRITICAL,
-                3f,
-                0,
-                43.6708,
-                7.2076
-        );
-        issue3.addObserver(EmergencyService.getInstance());
+                Issue.Priority.CRITICAL, 3f, 0, 43.6708, 7.2076);
+        i3.addObserver(EmergencyService.getInstance());
 
-        Issue issue4 = new UrbanIssue(
-                "Signalisation défaillante",
+        Issue i4 = new UrbanIssue("Signalisation défaillante",
                 "Feux de circulation hors service à un croisement.",
-                Issue.Priority.MEDIUM,
-                1f,
-                0,
-                43.7034,
-                7.2663
-        );
-        issue4.addObserver(EmergencyService.getInstance());
+                Issue.Priority.MEDIUM, 1f, 0, 43.7034, 7.2663);
+        i4.addObserver(EmergencyService.getInstance());
 
-        list.add(issue1);
-        list.add(issue2);
-        list.add(issue3);
-        list.add(issue4);
-
+        list.add(i1); list.add(i2); list.add(i3); list.add(i4);
         return list;
     }
 
@@ -156,26 +135,15 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
         Issue issue = items.get(itemIndex);
         issue.setStatus(value);
         adapter.notifyDataSetChanged();
-
         if (notifiable != null) {
-            notifiable.onDataChange(
-                    FRAGMENT_ID,
-                    issue,
-                    ACTION_RATING_CHANGED,
-                    value
-            );
+            notifiable.onDataChange(FRAGMENT_ID, issue, ACTION_RATING_CHANGED, value);
         }
     }
 
     @Override
     public void onClickItem(List<Issue> items, int itemIndex) {
         if (notifiable != null) {
-            notifiable.onDataChange(
-                    FRAGMENT_ID,
-                    items.get(itemIndex),
-                    ACTION_ITEM_CLICKED,
-                    itemIndex
-            );
+            notifiable.onDataChange(FRAGMENT_ID, items.get(itemIndex), ACTION_ITEM_CLICKED, itemIndex);
         }
     }
 

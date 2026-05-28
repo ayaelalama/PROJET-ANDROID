@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Alerte Accident Factory</string>
+    <string name="app_name">Alerte Accident</string>
+    <string name="signaler">Signaler un accident</string>
+    <string name="secours">Interface Secours</string>
+    <string name="tab_detail">Détail</string>
+    <string name="tab_incidents">Incidents</string>
+    <string name="tab_signalement">Signalement</string>
+    <string name="tab_alertes">Alertes</string>
+    <string name="tab_carte">Carte MVC</string>
 </resources>

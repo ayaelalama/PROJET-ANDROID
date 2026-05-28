@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "328651375452",
+    "project_id": "alerteaccident-fefae",
+    "storage_bucket": "alerteaccident-fefae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:328651375452:android:f3bedf016c791c98e6b799",
+        "android_client_info": {
+          "package_name": "com.example.td2ex2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXrB2icZATkR1gQ3GJeNA84QlLmW6Ubp0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

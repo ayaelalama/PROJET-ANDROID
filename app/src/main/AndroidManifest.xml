@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Réseau pour la carte OSM et Firebase -->
+    <!-- Réseau (carte OSM, Firebase) -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- GPS (notion 11) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Caméra -->
+    <!-- Caméra (notion 11) -->
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- Notifications (Android 13+) -->
+    <!-- Notifications (notion 12, Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- La caméra est optionnelle (appareil sans caméra peut quand même installer l'app) -->
+    <!-- Caméra optionnelle -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
@@ -43,7 +44,7 @@
             android:name=".ControlActivity"
             android:exported="false" />
 
-        <!-- FileProvider : permet à l'app caméra d'écrire dans notre cache privé -->
+        <!-- FileProvider pour la caméra -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -54,7 +55,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Service Firebase Cloud Messaging -->
+        <!-- Service Firebase Cloud Messaging (notion 12) -->
         <service
             android:name=".MessagingService"
             android:enabled="true"
