@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_signalement"
+        android:icon="@android:drawable/ic_menu_send"
+        android:title="Signaler" />
+    <item
+        android:id="@+id/nav_incidents"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="Mes alertes" />
+</menu>
