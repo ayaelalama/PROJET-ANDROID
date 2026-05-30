@@ -18,16 +18,18 @@ import java.util.List;
 /**
  * Screen 2 — Liste des incidents signalés.
  * Pattern Adapter (07) via IssueAdapter.
- * Observer (09) : écoute IssueManager pour se mettre à jour automatiquement.
- * Parcelable (02) : Issue est Parcelable.
+ * Parcelable (02) : la liste est sauvegardée/restaurée via Bundle.
  */
-public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, ViewObserver {
+public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
 
     public static final int FRAGMENT_ID = 1;
     public static final int ACTION_ITEM_CLICKED = 1;
     public static final int ACTION_RATING_CHANGED = 2;
 
+    private static final String KEY_ISSUES = "issues_state";
+
     private Notifiable notifiable;
+    private ArrayList<Issue> issues;
     private IssueAdapter adapter;
     private TextView incidentCountText;
 
@@ -56,10 +58,16 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
 
         incidentCountText = view.findViewById(R.id.incidentCountText);
 
-        // Utilise directement IssueManager — partagé entre signalant et secours
-        ArrayList<Issue> issues = IssueManager.getInstance().getIssues();
-        for (Issue issue : issues) {
-            issue.addObserver(EmergencyService.getInstance());
+        if (savedInstanceState != null) {
+            issues = savedInstanceState.getParcelableArrayList(KEY_ISSUES);
+        }
+
+        if (issues == null) {
+            issues = createDefaultIssues();
+        } else {
+            for (Issue issue : issues) {
+                issue.addObserver(EmergencyService.getInstance());
+            }
         }
 
         ListView listView = view.findViewById(R.id.issueListView);
@@ -72,47 +80,54 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
     @Override
     public void onStart() {
         super.onStart();
-        // S'enregistre comme observer de IssueManager → mise à jour automatique
-        IssueManager.getInstance().addObserver(this);
         if (notifiable != null) notifiable.onFragmentDisplayed(FRAGMENT_ID);
-        // Refresh au cas où des issues ont été ajoutées pendant qu'on était en arrière-plan
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-            updateCount();
-        }
     }
 
     @Override
-    public void onStop() {
-        super.onStop();
-        IssueManager.getInstance().removeObserver(this);
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelableArrayList(KEY_ISSUES, issues);
     }
-
-    // ── ViewObserver — appelé par IssueManager.notifyObservers() ─────────────
-
-    @Override
-    public void onModelChanged(List<Issue> updatedIssues) {
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-            updateCount();
-        }
-    }
-
-    // ── Appelé depuis ControlActivity quand signalant soumet ─────────────────
 
     public void addIssue(Issue issue) {
-        // IssueManager.getInstance().addIssue() a déjà été appelé dans Screen3Fragment
-        // On s'assure juste que l'observer est bien attaché
+        if (issues == null) issues = createDefaultIssues();
         issue.addObserver(EmergencyService.getInstance());
+        issues.add(0, issue);
         if (adapter != null) adapter.notifyDataSetChanged();
         updateCount();
     }
 
     private void updateCount() {
-        if (incidentCountText != null) {
-            int size = IssueManager.getInstance().getIssues().size();
-            incidentCountText.setText(size + " incident" + (size > 1 ? "s" : ""));
+        if (incidentCountText != null && issues != null) {
+            incidentCountText.setText(issues.size() + " incident" + (issues.size() > 1 ? "s" : ""));
         }
+    }
+
+    private ArrayList<Issue> createDefaultIssues() {
+        ArrayList<Issue> list = new ArrayList<>();
+
+        Issue i1 = new HighwayIssue("Collision entre véhicules",
+                "Accident signalé sur la voie rapide avec circulation ralentie. Blessés possibles.",
+                Issue.Priority.CRITICAL, 2f, 0, 43.6654, 7.2146);
+        i1.addObserver(EmergencyService.getInstance());
+
+        Issue i2 = new UrbanIssue("Piéton / Cycliste",
+                "Incident impliquant un usager vulnérable à proximité d'un carrefour.",
+                Issue.Priority.HIGH, 1f, 0, 43.7009, 7.2684);
+        i2.addObserver(EmergencyService.getInstance());
+
+        Issue i3 = new HighwayIssue("Plusieurs véhicules",
+                "Accrochage multiple provoquant un bouchon important sur autoroute.",
+                Issue.Priority.CRITICAL, 3f, 0, 43.6708, 7.2076);
+        i3.addObserver(EmergencyService.getInstance());
+
+        Issue i4 = new UrbanIssue("Signalisation défaillante",
+                "Feux de circulation hors service à un croisement.",
+                Issue.Priority.MEDIUM, 1f, 0, 43.7034, 7.2663);
+        i4.addObserver(EmergencyService.getInstance());
+
+        list.add(i1); list.add(i2); list.add(i3); list.add(i4);
+        return list;
     }
 
     @Override
@@ -131,4 +146,6 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
             notifiable.onDataChange(FRAGMENT_ID, items.get(itemIndex), ACTION_ITEM_CLICKED, itemIndex);
         }
     }
+
+
 }

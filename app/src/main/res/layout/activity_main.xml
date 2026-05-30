@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="#0D47A1">
 
-    <!-- Top wave/logo area -->
     <LinearLayout
         android:id="@+id/topSection"
         android:layout_width="match_parent"
@@ -46,13 +45,10 @@
 
     </LinearLayout>
 
-    <!-- Card section -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="0dp"
-        android:layout_marginEnd="0dp"
         app:cardCornerRadius="32dp"
         app:cardElevation="8dp"
         app:cardBackgroundColor="#FFFFFF"
@@ -66,7 +62,7 @@
             android:orientation="vertical"
             android:padding="28dp"
             android:paddingTop="32dp"
-            android:paddingBottom="40dp">
+            android:paddingBottom="32dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -77,7 +73,6 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="24dp" />
 
-            <!-- Signaler button -->
             <Button
                 android:id="@+id/defaultButton"
                 android:layout_width="match_parent"
@@ -90,7 +85,6 @@
                 android:backgroundTint="#D32F2F"
                 android:layout_marginBottom="14dp" />
 
-            <!-- Secours button -->
             <Button
                 android:id="@+id/optionButton"
                 android:layout_width="match_parent"
@@ -100,7 +94,8 @@
                 android:textSize="17sp"
                 android:textColor="#1565C0"
                 android:textStyle="bold"
-                android:backgroundTint="#E3F2FD" />
+                android:backgroundTint="#E3F2FD"
+                android:layout_marginBottom="16dp" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -109,9 +104,7 @@
                 android:textSize="12sp"
                 android:textColor="#9E9E9E"
                 android:gravity="center"
-                android:layout_marginTop="20dp" />
-
-        </LinearLayout>
+                android:layout_marginBottom="16dp" /></LinearLayout>
     </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

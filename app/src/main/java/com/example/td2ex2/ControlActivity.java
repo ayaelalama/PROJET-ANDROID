@@ -1,6 +1,8 @@
 package com.example.td2ex2;
 
 import android.os.Bundle;
+import android.widget.ImageButton;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -33,8 +35,18 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
 
         bottomNav = findViewById(R.id.bottomNav);
 
+        // Bouton retour accueil
+        ImageButton btnRetour = findViewById(R.id.btnRetourAccueil);
+        if (btnRetour != null) btnRetour.setOnClickListener(v -> finish());
+
         int startScreen = getIntent().getIntExtra("startScreen", MODE_SIGNALANT);
         isSecours = (startScreen == MODE_SECOURS);
+
+        // Titre de la barre selon le mode
+        TextView topBarTitle = findViewById(R.id.topBarTitle);
+        if (topBarTitle != null) {
+            topBarTitle.setText(isSecours ? "🚑 Interface Secours" : "🚨 Signaler un accident");
+        }
 
         if (isSecours) {
             bottomNav.inflateMenu(R.menu.bottom_nav_secours);
@@ -90,10 +102,8 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
             if (actionCode == Screen2Fragment.ACTION_ITEM_CLICKED && object instanceof Issue) {
                 selectedIssue = (Issue) object;
                 if (isSecours) {
-                    // Navigate FIRST so fragment gets attached, then pass the issue
                     showFragment(screen1Fragment);
                     bottomNav.setSelectedItemId(R.id.nav_detail);
-                    // Post to next frame so fragment is fully attached before displayIssue
                     bottomNav.post(() -> screen1Fragment.displayIssue(selectedIssue));
                 } else {
                     showFragment(screen3Fragment);
@@ -107,7 +117,6 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
             Issue newIssue = (Issue) object;
             selectedIssue = newIssue;
             screen2Fragment.addIssue(newIssue);
-            // Store issue in screen1 (it will render when navigated to)
             screen1Fragment.displayIssue(newIssue);
         }
     }
