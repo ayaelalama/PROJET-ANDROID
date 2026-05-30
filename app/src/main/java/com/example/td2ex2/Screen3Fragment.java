@@ -53,8 +53,11 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Screen 3 — Flux guidé de signalement d'accident.
- * 01–Vues  02–Parcelable  03–Fragment  08–Factory  11–GPS/Caméra  12–Notifications
+ * Screen 3 — Flux guidé de signalement d'accident (8 pages).
+ * 01-Vues  02-Parcelable  03-Fragment  08-Factory  11-GPS/Caméra  12-Notifications
+ *
+ * Pages : 0=infos  1=impliqué  2=type  3=blessés  4=gravité
+ *         5=photo  6=GPS  7=récap  8=succès
  */
 public class Screen3Fragment extends Fragment {
 
@@ -69,13 +72,12 @@ public class Screen3Fragment extends Fragment {
     private LinearLayout progressDots;
 
     private int page = 0;
-    // 0=infos  1=impliqué  2=type  3=blessés  4=gravité  5=photo  6=recap  7=succès
 
     // Données personnelles
     private String nom = "", prenom = "", telephone = "", adresse = "";
     private String jour = "", mois = "", annee = "";
 
-    // Réponses questionnaire
+    // Questionnaire
     private String concerne = "", typeAccident = "", blesses = "", gravite = "";
 
     // GPS
@@ -88,55 +90,48 @@ public class Screen3Fragment extends Fragment {
     private Uri currentPhotoUri = null;
     private ImageView photoPreview;
 
-    // Incident en cours d'édition (pour modification)
+    // Edition
     private Issue incidentEnCours = null;
     private boolean modeEdition = false;
 
     // EditText refs
     private EditText nomEdit, prenomEdit, telEdit, jourEdit, moisEdit, anneeEdit, adresseEdit;
 
-    // Permission GPS
+    // ── Launchers ─────────────────────────────────────────────────────────────
+
     private final ActivityResultLauncher<String> gpsPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) {
                     fetchLocation();
                 } else {
                     Toast.makeText(requireContext(),
-                            "Permission GPS refusée. Position simulée utilisée (mock).", Toast.LENGTH_LONG).show();
-                    // Mock GPS pour la démo prof
+                            "Permission GPS refusée — position simulée utilisée.", Toast.LENGTH_LONG).show();
                     latitude = 43.7009;
                     longitude = 7.2684;
                     locationAcquired = true;
-                    if (page == 5 || page == 6) showPage();
+                    if (page == 6) showPage();
                 }
             });
 
-    // Permission caméra
     private final ActivityResultLauncher<String> cameraPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
-                if (granted) {
-                    launchCamera();
-                } else {
-                    Toast.makeText(requireContext(),
-                            "Permission caméra refusée.", Toast.LENGTH_SHORT).show();
-                }
+                if (granted) launchCamera();
+                else Toast.makeText(requireContext(), "Permission caméra refusée.", Toast.LENGTH_SHORT).show();
             });
 
-    // Prise de photo
     private final ActivityResultLauncher<Uri> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (success && currentPhotoPath != null) {
-                    if (photoPreview != null) {
-                        Picasso.get().load(new File(currentPhotoPath))
-                                .placeholder(R.drawable.ic_camera_placeholder)
-                                .fit().centerCrop().into(photoPreview);
-                    }
                     Toast.makeText(requireContext(), "📷 Photo enregistrée !", Toast.LENGTH_SHORT).show();
+                    // Refresh page so preview and button text update
+                    showPage();
                 } else {
                     currentPhotoPath = null;
                     Toast.makeText(requireContext(), "Photo annulée.", Toast.LENGTH_SHORT).show();
                 }
             });
+
+    // ── Cycle de vie ──────────────────────────────────────────────────────────
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -170,15 +165,15 @@ public class Screen3Fragment extends Fragment {
 
         backButton.setOnClickListener(v -> {
             saveInputs();
-            if (page > 0 && page < 7) { page--; showPage(); scrollToTop(); }
+            if (page > 0 && page < 8) { page--; showPage(); scrollToTop(); }
         });
 
         nextButton.setOnClickListener(v -> {
             saveInputs();
             if (!validateCurrentPage()) return;
-            if (page == 6) {
+            if (page == 7) {
                 sendIncident();
-            } else if (page < 6) {
+            } else if (page < 7) {
                 page++;
                 showPage();
                 scrollToTop();
@@ -189,12 +184,11 @@ public class Screen3Fragment extends Fragment {
         showPage();
     }
 
-    // ── Mode édition (appelé depuis Screen2Fragment) ───────────────────────────
+    // ── Mode édition ──────────────────────────────────────────────────────────
 
     public void startEditing(Issue issue) {
         this.incidentEnCours = issue;
         this.modeEdition = true;
-        // Pré-remplir depuis la description de l'issue
         page = 0;
         showPage();
         scrollToTop();
@@ -219,16 +213,17 @@ public class Screen3Fragment extends Fragment {
 
     private boolean validateQ(String value, String msg) {
         if (value == null || value.trim().isEmpty()) {
-            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show(); return false;
+            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+            return false;
         }
         return true;
     }
 
     private boolean validatePersonalInfo() {
-        if (nom.trim().isEmpty()) { showErr(nomEdit, "Nom obligatoire."); return false; }
-        if (!nom.matches("[a-zA-ZÀ-ÿ\\s'\\-]+")) { showErr(nomEdit, "Lettres uniquement."); return false; }
-        if (prenom.trim().isEmpty()) { showErr(prenomEdit, "Prénom obligatoire."); return false; }
-        if (!telephone.matches("0[0-9]{9}")) { showErr(telEdit, "Format 0XXXXXXXXX (10 chiffres)."); return false; }
+        if (nom.trim().isEmpty())            { showErr(nomEdit,    "Nom obligatoire.");             return false; }
+        if (!nom.matches("[a-zA-ZÀ-ÿ\\s'\\-]+")) { showErr(nomEdit, "Lettres uniquement.");         return false; }
+        if (prenom.trim().isEmpty())         { showErr(prenomEdit, "Prénom obligatoire.");           return false; }
+        if (!telephone.matches("0[0-9]{9}")) { showErr(telEdit,    "Format 0XXXXXXXXX.");           return false; }
         if (!isValidDate(jour, mois, annee)) {
             Toast.makeText(requireContext(), "Date invalide (JJ/MM/AAAA).", Toast.LENGTH_LONG).show();
             return false;
@@ -245,25 +240,25 @@ public class Screen3Fragment extends Fragment {
         try {
             int d = Integer.parseInt(j), mo = Integer.parseInt(m), y = Integer.parseInt(a);
             if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1900 || y > 2025) return false;
-            if ((mo == 4||mo==6||mo==9||mo==11) && d > 30) return false;
+            if ((mo==4||mo==6||mo==9||mo==11) && d > 30) return false;
             if (mo == 2) { boolean leap = (y%4==0&&y%100!=0)||(y%400==0); if (d > (leap?29:28)) return false; }
             return true;
         } catch (NumberFormatException e) { return false; }
     }
 
-    // ── Pages ─────────────────────────────────────────────────────────────────
+    // ── Affichage pages ───────────────────────────────────────────────────────
 
     private void showPage() {
         formContainer.removeAllViews();
         photoPreview = null;
 
-        backButton.setVisibility(page > 0 && page < 7 ? View.VISIBLE : View.INVISIBLE);
-        nextButton.setVisibility(page < 7 ? View.VISIBLE : View.GONE);
+        backButton.setVisibility(page > 0 && page < 8 ? View.VISIBLE : View.INVISIBLE);
+        nextButton.setVisibility(page < 8 ? View.VISIBLE : View.GONE);
 
         updateHeader();
 
         switch (page) {
-            case 0: showPersonalInfo(); break;
+            case 0: showPersonalInfo();  break;
             case 1: showQuestion("Étape 1/4", "Vous êtes concerné(e) par l'accident ?",
                         new String[]{"Oui, je suis impliqué(e)", "Non, je suis témoin"}, 1); break;
             case 2: showQuestion("Étape 2/4", "Quel type d'accident ?",
@@ -273,20 +268,22 @@ public class Screen3Fragment extends Fragment {
                         new String[]{"Oui","Non","Je ne sais pas"}, 3); break;
             case 4: showQuestion("Étape 4/4", "Quelle est la gravité ?",
                         new String[]{"Dégâts légers","Situation préoccupante","Danger immédiat / blessé grave"}, 4); break;
-            case 5: showPhotoPage(); break;
-            case 6: showRecapAndLocation(); break;
-            case 7: showSuccess(); break;
+            case 5: showPhotoPage();     break;
+            case 6: showGpsPage();       break;
+            case 7: showRecapPage();     break;
+            case 8: showSuccess();       break;
         }
     }
 
     private void updateHeader() {
         if (stepLabel == null || progressDots == null) return;
         String[] labels = {"Vos informations","Êtes-vous impliqué ?","Type d'accident",
-                           "Blessés ?","Gravité","Photo de la scène","Récap & Localisation","✅ Envoyé"};
+                           "Blessés ?","Gravité","Photo de la scène","Localisation GPS",
+                           "Récapitulatif","✅ Envoyé"};
         stepLabel.setText(page < labels.length ? labels[page] : "");
         progressDots.removeAllViews();
-        if (page == 7) return;
-        for (int i = 0; i <= 6; i++) {
+        if (page >= 8) return;
+        for (int i = 0; i <= 7; i++) {
             View dot = new View(requireContext());
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(i == page ? 24 : 8), dp(8));
             lp.setMargins(dp(3), 0, dp(3), 0);
@@ -299,45 +296,48 @@ public class Screen3Fragment extends Fragment {
         }
     }
 
-    // ── Page infos personnelles ───────────────────────────────────────────────
+    // ── Page 0 : Infos personnelles ───────────────────────────────────────────
 
     private void showPersonalInfo() {
         nextButton.setText("Suivant →");
         addTitle("Vos informations");
-        addSubtitle(modeEdition ? "⚠️ Mode modification — corrigez vos informations" :
-                "Ces informations aident les secours à vous identifier.");
+        addSubtitle(modeEdition ? "⚠️ Mode modification — corrigez vos informations"
+                : "Ces informations aident les secours à vous identifier.");
 
         TextView req = mkText("* Champs obligatoires", 12, 0xFFD32F2F, Typeface.ITALIC);
         formContainer.addView(req, fullP());
 
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
-        nomEdit    = mkInput("Nom *", nom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        nomEdit    = mkInput("Nom *", nom,    InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         prenomEdit = mkInput("Prénom *", prenom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        row.addView(nomEdit, wP()); row.addView(prenomEdit, wP());
+        row.addView(nomEdit,    wP());
+        row.addView(prenomEdit, wP());
         formContainer.addView(row, fullP());
 
         telEdit = mkInput("Téléphone * (0XXXXXXXXX)", telephone, InputType.TYPE_CLASS_PHONE);
         telEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(10)});
-        formContainer.addView(wrap(telEdit), fullP());
+        formContainer.addView(telEdit, fullP());
 
         addLabel("Date de naissance *");
         LinearLayout dateRow = new LinearLayout(requireContext());
         dateRow.setOrientation(LinearLayout.HORIZONTAL);
-        jourEdit  = mkInput("JJ", jour,  InputType.TYPE_CLASS_NUMBER);
-        moisEdit  = mkInput("MM", mois,  InputType.TYPE_CLASS_NUMBER);
+        jourEdit  = mkInput("JJ",   jour,  InputType.TYPE_CLASS_NUMBER);
+        moisEdit  = mkInput("MM",   mois,  InputType.TYPE_CLASS_NUMBER);
         anneeEdit = mkInput("AAAA", annee, InputType.TYPE_CLASS_NUMBER);
         jourEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
         moisEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
         anneeEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4)});
-        dateRow.addView(jourEdit, wP()); dateRow.addView(moisEdit, wP()); dateRow.addView(anneeEdit, wP());
+        dateRow.addView(jourEdit,  wP());
+        dateRow.addView(moisEdit,  wP());
+        dateRow.addView(anneeEdit, wP());
         formContainer.addView(dateRow, fullP());
 
         adresseEdit = mkInput("Adresse (optionnel)", adresse, InputType.TYPE_CLASS_TEXT);
-        formContainer.addView(wrap(adresseEdit), fullP());
+        formContainer.addView(adresseEdit, fullP());
     }
 
-    // ── Page questionnaire ────────────────────────────────────────────────────
+    // ── Pages 1-4 : Questionnaire ─────────────────────────────────────────────
 
     private void showQuestion(String step, String question, String[] options, int qNum) {
         nextButton.setText("Suivant →");
@@ -351,32 +351,29 @@ public class Screen3Fragment extends Fragment {
         qTv.setGravity(Gravity.CENTER);
         qTv.setPadding(dp(16), dp(20), dp(16), dp(20));
         qTv.setBackground(card(0xFFE3F2FD));
-        formContainer.addView(qTv, cardP());
-
-        if (!anySelected(qNum)) {
-            TextView hint = mkText("👆 Sélectionnez une option pour continuer", 13, 0xFF5C6370, Typeface.ITALIC);
-            hint.setGravity(Gravity.CENTER);
-            formContainer.addView(hint, fullP());
-        }
+        LinearLayout.LayoutParams cp = fullP();
+        cp.setMargins(0, dp(10), 0, dp(14));
+        formContainer.addView(qTv, cp);
 
         for (String opt : options) addOption(opt, qNum);
     }
 
-    // ── Page photo ────────────────────────────────────────────────────────────
+    // ── Page 5 : Photo ────────────────────────────────────────────────────────
 
     private void showPhotoPage() {
-        nextButton.setText("Suivant →");
-        addTitle("📷 Photo de la scène");
-        addSubtitle("Prenez une photo de la scène pour aider les secours.\n(Optionnel mais recommandé)");
+        nextButton.setVisibility(View.GONE);
+        backButton.setVisibility(View.VISIBLE);
 
-        // Aperçu photo
+        addTitle("📷 Photo de la scène");
+        addSubtitle("Prenez une photo pour aider les secours. (Optionnel)");
+
         photoPreview = new ImageView(requireContext());
         photoPreview.setAdjustViewBounds(true);
         photoPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        photoPreview.setBackground(card(0xFFF0F4F8));
         LinearLayout.LayoutParams imgP = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(220));
         imgP.setMargins(0, dp(8), 0, dp(8));
-        photoPreview.setBackground(card(0xFFF0F4F8));
 
         if (currentPhotoPath != null) {
             Picasso.get().load(new File(currentPhotoPath))
@@ -387,7 +384,6 @@ public class Screen3Fragment extends Fragment {
         }
         formContainer.addView(photoPreview, imgP);
 
-        // Bouton photo
         Button btnPhoto = new Button(requireContext());
         btnPhoto.setText(currentPhotoPath != null ? "📷 Reprendre la photo" : "📷 Prendre une photo");
         btnPhoto.setAllCaps(false);
@@ -402,51 +398,48 @@ public class Screen3Fragment extends Fragment {
             formContainer.addView(ok, fullP());
         }
 
-        // Bouton passer
+        Button btnNext = new Button(requireContext());
+        btnNext.setText("Suivant →");
+        btnNext.setAllCaps(false);
+        btnNext.setTextColor(Color.WHITE);
+        btnNext.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1565C0));
+        btnNext.setOnClickListener(v -> { page++; showPage(); scrollToTop(); });
+        formContainer.addView(btnNext, fullP());
+
         Button btnSkip = new Button(requireContext());
-        btnSkip.setText("Passer cette étape →");
+        btnSkip.setText("Passer cette étape");
         btnSkip.setAllCaps(false);
         btnSkip.setTextColor(0xFF5C6370);
         btnSkip.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFF0F4F8));
-        btnSkip.setOnClickListener(v -> { page++; showPage(); scrollToTop(); });
+        btnSkip.setOnClickListener(v -> { currentPhotoPath = null; page++; showPage(); scrollToTop(); });
         formContainer.addView(btnSkip, fullP());
-        nextButton.setVisibility(View.GONE); // on navigue via les boutons ci-dessus
-        backButton.setVisibility(View.VISIBLE);
     }
 
-    // ── Page récap + GPS ──────────────────────────────────────────────────────
+    // ── Page 6 : GPS ──────────────────────────────────────────────────────────
 
-    private void showRecapAndLocation() {
-        nextButton.setText("✅ Confirmer et envoyer");
-        addTitle("Récapitulatif & Localisation");
-        addSubtitle("Vérifiez vos informations. Appuyez sur un champ pour le modifier.");
+    private void showGpsPage() {
+        nextButton.setText("Suivant →");
 
-        // Récap modifiable
-        addRecapEditable("👤 Identité", nom + " " + prenom + "\nTél : " + telephone +
-                "\nNé(e) le : " + jour + "/" + mois + "/" + annee +
-                (adresse.isEmpty() ? "" : "\n" + adresse), 0);
-        addRecapEditable("🚨 Accident", "Impliqué : " + v(concerne) +
-                "\nType : " + v(typeAccident) + "\nBlessés : " + v(blesses) +
-                "\nGravité : " + v(gravite), 2);
+        addTitle("📍 Localisation GPS");
+        addSubtitle("Détectez votre position réelle pour guider les secours.");
 
-        // Photo miniature si disponible
-        if (currentPhotoPath != null) {
-            addSubtitle("📷 Photo jointe :");
-            ImageView mini = new ImageView(requireContext());
-            mini.setAdjustViewBounds(true);
-            mini.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dp(120));
-            mp.setMargins(0, dp(4), 0, dp(8));
-            Picasso.get().load(new File(currentPhotoPath))
-                    .placeholder(R.drawable.ic_camera_placeholder).fit().centerCrop().into(mini);
-            formContainer.addView(mini, mp);
-        }
-
-        // GPS
-        addSubtitle("📍 Localisation GPS");
         if (!locationAcquired) requestGPS();
 
+        TextView statusTv = mkText(
+                locationAcquired
+                    ? "✅ Position détectée :\n" + String.format("%.5f, %.5f", latitude, longitude)
+                    : "⏳ Récupération de la position en cours…",
+                15,
+                locationAcquired ? 0xFF2E7D32 : 0xFF1565C0,
+                Typeface.BOLD);
+        statusTv.setGravity(Gravity.CENTER);
+        statusTv.setPadding(dp(12), dp(16), dp(12), dp(16));
+        statusTv.setBackground(card(locationAcquired ? 0xFFE8F5E9 : 0xFFE3F2FD));
+        LinearLayout.LayoutParams sp = fullP();
+        sp.setMargins(0, dp(8), 0, dp(12));
+        formContainer.addView(statusTv, sp);
+
+        // Carte
         Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
         MapView map = new MapView(requireContext());
         map.setTileSource(TileSourceFactory.MAPNIK);
@@ -455,75 +448,68 @@ public class Screen3Fragment extends Fragment {
         map.getController().setZoom(16.0);
         map.getController().setCenter(pt);
         Marker marker = new Marker(map);
-        marker.setPosition(pt); marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setPosition(pt);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         marker.setTitle("Lieu de l'accident");
-        map.getOverlays().add(marker); map.invalidate();
+        map.getOverlays().add(marker);
+        map.invalidate();
 
         LinearLayout.LayoutParams mapP = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(220));
-        mapP.setMargins(0, dp(8), 0, dp(8));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(240));
+        mapP.setMargins(0, dp(4), 0, dp(12));
         formContainer.addView(map, mapP);
-
-        TextView coordTv = mkText(
-                locationAcquired
-                    ? "✅ GPS : " + String.format("%.5f, %.5f", latitude, longitude)
-                    : "⏳ Récupération GPS en cours… (mock si refus)",
-                14, 0xFF1565C0, Typeface.NORMAL);
-        coordTv.setGravity(Gravity.CENTER);
-        formContainer.addView(coordTv, fullP());
 
         Button retryBtn = new Button(requireContext());
         retryBtn.setText("↻ Actualiser la position GPS");
         retryBtn.setAllCaps(false);
         retryBtn.setTextColor(0xFF1565C0);
         retryBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE3F2FD));
-        LinearLayout.LayoutParams rP = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(46));
-        rP.gravity = Gravity.CENTER_HORIZONTAL;
         retryBtn.setOnClickListener(v -> { locationAcquired = false; showPage(); });
-        formContainer.addView(retryBtn, rP);
+        formContainer.addView(retryBtn, fullP());
     }
 
-    // Bloc recap cliquable pour modifier
-    private void addRecapEditable(String title, String content, int goToPage) {
-        LinearLayout card = new LinearLayout(requireContext());
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackground(card(0xFFFFFFFF));
+    // ── Page 7 : Récap ────────────────────────────────────────────────────────
 
-        LinearLayout header = new LinearLayout(requireContext());
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
+    private void showRecapPage() {
+        nextButton.setText("✅ Confirmer et envoyer");
 
-        TextView t = mkText(title, 13, 0xFF1565C0, Typeface.BOLD);
-        t.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        header.addView(t);
+        addTitle("Récapitulatif");
+        addSubtitle("Vérifiez vos informations. Appuyez sur ✏️ pour modifier.");
 
-        TextView edit = mkText("✏️ Modifier", 12, 0xFF1565C0, Typeface.NORMAL);
-        header.addView(edit);
-        card.addView(header, fullP());
+        addRecapEditable("👤 Identité",
+                nom + " " + prenom + "\nTél : " + telephone +
+                "\nNé(e) le : " + jour + "/" + mois + "/" + annee +
+                (adresse.isEmpty() ? "" : "\n" + adresse), 0);
 
-        TextView c = mkText(content, 14, 0xFF1A1A2E, Typeface.NORMAL);
-        LinearLayout.LayoutParams cp = fullP(); cp.setMargins(0, dp(4), 0, 0);
-        card.addView(c, cp);
+        addRecapEditable("🚨 Accident",
+                "Impliqué : " + v(concerne) +
+                "\nType : " + v(typeAccident) +
+                "\nBlessés : " + v(blesses) +
+                "\nGravité : " + v(gravite), 2);
 
-        LinearLayout.LayoutParams lp = fullP(); lp.setMargins(0, dp(8), 0, dp(8));
-        formContainer.addView(card, lp);
+        addRecapEditable("📍 Localisation",
+                String.format("%.5f, %.5f", latitude, longitude), 6);
 
-        // Clic = retour à la page correspondante
-        card.setOnClickListener(v -> {
-            page = goToPage;
-            showPage();
-            scrollToTop();
-            Toast.makeText(requireContext(), "Modifiez puis cliquez Suivant pour revenir.", Toast.LENGTH_SHORT).show();
-        });
-        edit.setOnClickListener(v -> {
-            page = goToPage;
-            showPage();
-            scrollToTop();
-            Toast.makeText(requireContext(), "Modifiez puis cliquez Suivant pour revenir.", Toast.LENGTH_SHORT).show();
-        });
+        if (currentPhotoPath != null) {
+            addSubtitle("📷 Photo jointe :");
+            ImageView mini = new ImageView(requireContext());
+            mini.setAdjustViewBounds(true);
+            mini.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            LinearLayout.LayoutParams imgP = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(120));
+            imgP.setMargins(0, dp(4), 0, dp(8));
+            Picasso.get().load(new File(currentPhotoPath))
+                    .placeholder(R.drawable.ic_camera_placeholder)
+                    .fit().centerCrop().into(mini);
+            formContainer.addView(mini, imgP);
+        } else {
+            TextView noPhoto = mkText("📷 Aucune photo (optionnel)", 13, 0xFF9E9E9E, Typeface.ITALIC);
+            noPhoto.setGravity(Gravity.CENTER);
+            formContainer.addView(noPhoto, fullP());
+        }
     }
+
+    // ── Page 8 : Succès ───────────────────────────────────────────────────────
 
     private void showSuccess() {
         backButton.setVisibility(View.GONE);
@@ -533,7 +519,7 @@ public class Screen3Fragment extends Fragment {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         card.setPadding(dp(24), dp(40), dp(24), dp(40));
-        card.setBackground(card(0xFFFFFFFF));
+        card.setBackground(card(Color.WHITE));
 
         TextView emoji = mkText("✅", 64, 0xFF2E7D32, Typeface.NORMAL);
         emoji.setGravity(Gravity.CENTER);
@@ -541,17 +527,18 @@ public class Screen3Fragment extends Fragment {
 
         TextView title = mkText("Alerte transmise !", 24, 0xFF2E7D32, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams tp = fullP(); tp.setMargins(0, dp(12), 0, dp(8));
-        card.addView(title, tp);
+        card.addView(title, fullP());
 
-        TextView sub = mkText("Votre signalement a bien été envoyé aux services compétents.\n\n" +
+        TextView sub = mkText(
+                "Votre signalement a bien été envoyé aux services compétents.\n\n" +
                 "Les secours ont été alertés et interviendront dans les plus brefs délais.\n\n" +
-                "Restez en sécurité et ne bougez pas le véhicule si possible.",
+                "Restez en sécurité.",
                 15, 0xFF5C6370, Typeface.NORMAL);
         sub.setGravity(Gravity.CENTER);
         card.addView(sub, fullP());
 
-        LinearLayout.LayoutParams cp = fullP(); cp.setMargins(0, dp(40), 0, dp(24));
+        LinearLayout.LayoutParams cp = fullP();
+        cp.setMargins(0, dp(40), 0, dp(24));
         formContainer.addView(card, cp);
 
         Button newReport = new Button(requireContext());
@@ -567,33 +554,33 @@ public class Screen3Fragment extends Fragment {
 
     private void sendIncident() {
         Issue.Priority priority;
-        if ("Danger immédiat / blessé grave".equals(gravite)) priority = Issue.Priority.CRITICAL;
-        else if ("Situation préoccupante".equals(gravite))    priority = Issue.Priority.HIGH;
-        else                                                   priority = Issue.Priority.MEDIUM;
+        if ("Danger immédiat / blessé grave".equals(gravite))  priority = Issue.Priority.CRITICAL;
+        else if ("Situation préoccupante".equals(gravite))     priority = Issue.Priority.HIGH;
+        else                                                    priority = Issue.Priority.MEDIUM;
 
         AccidentFactory factory = ("Plusieurs véhicules".equals(typeAccident) ||
                 "Collision entre véhicules".equals(typeAccident))
                 ? new HighwayFactory() : new UrbanFactory();
 
         String titleStr = "Accident — " + prenom + " " + nom;
-        String desc = "Tél : " + telephone + "\nNé(e) le : " + jour + "/" + mois + "/" + annee
+        String desc = "Tél : " + telephone
+                + "\nNé(e) le : " + jour + "/" + mois + "/" + annee
                 + (adresse.isEmpty() ? "" : "\nAdresse : " + adresse)
-                + "\nImpliqué : " + concerne + "\nType : " + typeAccident
-                + "\nBlessés : " + blesses + "\nGravité : " + gravite
+                + "\nImpliqué : " + concerne
+                + "\nType : " + typeAccident
+                + "\nBlessés : " + blesses
+                + "\nGravité : " + gravite
                 + "\nGPS : " + String.format("%.5f, %.5f", latitude, longitude)
                 + (currentPhotoPath != null ? "\n📷 Photo jointe" : "");
 
         if (modeEdition && incidentEnCours != null) {
-            // Mise à jour de l'issue existante
             incidentEnCours.setPriority(priority);
             incidentEnCours.setLocation(latitude, longitude);
             if (currentPhotoPath != null) incidentEnCours.setPicture(currentPhotoPath);
-            // Notifier l'observer
             EmergencyService.getInstance().onStatusChanged(incidentEnCours);
             sendLocalNotification("Signalement modifié", titleStr);
-            if (notifiable != null) {
+            if (notifiable != null)
                 notifiable.onDataChange(FRAGMENT_ID, incidentEnCours, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
-            }
             modeEdition = false;
         } else {
             Issue issue = factory.createIssue(titleStr, desc);
@@ -602,19 +589,16 @@ public class Screen3Fragment extends Fragment {
             issue.setLocation(latitude, longitude);
             if (currentPhotoPath != null) issue.setPicture(currentPhotoPath);
 
-            // Ajouter à l'IssueManager (partagé → visible dans Secours)
             IssueManager.getInstance().addIssue(issue);
             issue.addObserver(EmergencyService.getInstance());
             EmergencyService.getInstance().onStatusChanged(issue);
 
-            sendLocalNotification(titleStr, "Gravité : " + gravite + " | GPS enregistré");
-
-            if (notifiable != null) {
+            sendLocalNotification(titleStr, "Gravité : " + gravite);
+            if (notifiable != null)
                 notifiable.onDataChange(FRAGMENT_ID, issue, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
-            }
         }
 
-        page = 7;
+        page = 8;
         showPage();
         scrollToTop();
     }
@@ -626,32 +610,59 @@ public class Screen3Fragment extends Fragment {
                 == PackageManager.PERMISSION_GRANTED) {
             fetchLocation();
         } else {
-            // Demande explicite à l'utilisateur
             gpsPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
     @SuppressLint("MissingPermission")
     private void fetchLocation() {
-        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-            if (location != null) {
-                latitude = location.getLatitude();
-                longitude = location.getLongitude();
-                locationAcquired = true;
-                if (page == 6) showPage();
-            } else {
-                // L'émulateur n'a pas de localisation réelle → mock
-                latitude = 43.7009; longitude = 7.2684;
-                locationAcquired = true;
-                Toast.makeText(requireContext(),
-                        "GPS : position simulée (émulateur sans GPS réel)", Toast.LENGTH_SHORT).show();
-                if (page == 6) showPage();
-            }
-        }).addOnFailureListener(e -> {
-            latitude = 43.7009; longitude = 7.2684;
-            locationAcquired = true;
-            if (page == 6) showPage();
-        });
+        // Try getCurrentLocation first (more reliable than getLastLocation on emulator)
+        com.google.android.gms.location.CurrentLocationRequest request =
+                new com.google.android.gms.location.CurrentLocationRequest.Builder()
+                        .setPriority(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY)
+                        .setMaxUpdateAgeMillis(0)
+                        .setDurationMillis(10000)
+                        .build();
+
+        fusedLocationClient.getCurrentLocation(request, null)
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        latitude = location.getLatitude();
+                        longitude = location.getLongitude();
+                        locationAcquired = true;
+                        if (page == 6) showPage();
+                    } else {
+                        // Fallback: getLastLocation
+                        fusedLocationClient.getLastLocation().addOnSuccessListener(last -> {
+                            if (last != null) {
+                                latitude = last.getLatitude();
+                                longitude = last.getLongitude();
+                            } else {
+                                Toast.makeText(requireContext(),
+                                        "GPS indisponible — position simulée utilisée.", Toast.LENGTH_SHORT).show();
+                            }
+                            locationAcquired = true;
+                            if (page == 6) showPage();
+                        }).addOnFailureListener(e -> {
+                            locationAcquired = true;
+                            if (page == 6) showPage();
+                        });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Fallback to last known
+                    fusedLocationClient.getLastLocation().addOnSuccessListener(last -> {
+                        if (last != null) {
+                            latitude = last.getLatitude();
+                            longitude = last.getLongitude();
+                        }
+                        locationAcquired = true;
+                        if (page == 6) showPage();
+                    }).addOnFailureListener(ex -> {
+                        locationAcquired = true;
+                        if (page == 6) showPage();
+                    });
+                });
     }
 
     // ── Caméra ────────────────────────────────────────────────────────────────
@@ -667,13 +678,19 @@ public class Screen3Fragment extends Fragment {
 
     private void launchCamera() {
         try {
-            File photoFile = File.createTempFile("alerte_", ".jpg", requireContext().getCacheDir());
+            File dir = requireContext().getExternalFilesDir(null);
+            if (dir == null) dir = requireContext().getCacheDir();
+            if (!dir.exists()) dir.mkdirs();
+            File photoFile = File.createTempFile("alerte_", ".jpg", dir);
             currentPhotoPath = photoFile.getAbsolutePath();
             currentPhotoUri = FileProvider.getUriForFile(
-                    requireContext(), requireContext().getPackageName() + ".fileprovider", photoFile);
+                    requireContext(),
+                    requireContext().getPackageName() + ".fileprovider",
+                    photoFile);
             takePictureLauncher.launch(currentPhotoUri);
         } catch (IOException e) {
-            Toast.makeText(requireContext(), "Erreur création fichier photo.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(),
+                    "Erreur création fichier photo : " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -706,8 +723,7 @@ public class Screen3Fragment extends Fragment {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setContentIntent(pi);
-        NotificationManagerCompat.from(requireContext())
-                .notify((int) System.currentTimeMillis(), b.build());
+        NotificationManagerCompat.from(requireContext()).notify((int) System.currentTimeMillis(), b.build());
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
@@ -730,22 +746,45 @@ public class Screen3Fragment extends Fragment {
         formContainer.addView(tv, p);
     }
 
+    private void addRecapEditable(String title, String content, int goToPage) {
+        LinearLayout card = new LinearLayout(requireContext());
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(card(Color.WHITE));
+
+        LinearLayout header = new LinearLayout(requireContext());
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView t = mkText(title, 13, 0xFF1565C0, Typeface.BOLD);
+        t.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        header.addView(t);
+        TextView edit = mkText("✏️ Modifier", 12, 0xFF1565C0, Typeface.NORMAL);
+        header.addView(edit);
+        card.addView(header, fullP());
+
+        TextView c = mkText(content, 14, 0xFF1A1A2E, Typeface.NORMAL);
+        LinearLayout.LayoutParams cp = fullP(); cp.setMargins(0, dp(4), 0, 0);
+        card.addView(c, cp);
+
+        LinearLayout.LayoutParams lp = fullP(); lp.setMargins(0, dp(8), 0, dp(8));
+        formContainer.addView(card, lp);
+
+        View.OnClickListener goEdit = v -> {
+            page = goToPage;
+            showPage();
+            scrollToTop();
+            Toast.makeText(requireContext(), "Modifiez puis cliquez Suivant.", Toast.LENGTH_SHORT).show();
+        };
+        card.setOnClickListener(goEdit);
+        edit.setOnClickListener(goEdit);
+    }
+
     private boolean isSelected(String opt, int qNum) {
         switch (qNum) {
             case 1: return opt.equals(concerne);
             case 2: return opt.equals(typeAccident);
             case 3: return opt.equals(blesses);
             case 4: return opt.equals(gravite);
-            default: return false;
-        }
-    }
-
-    private boolean anySelected(int qNum) {
-        switch (qNum) {
-            case 1: return !concerne.isEmpty();
-            case 2: return !typeAccident.isEmpty();
-            case 3: return !blesses.isEmpty();
-            case 4: return !gravite.isEmpty();
             default: return false;
         }
     }
@@ -768,13 +807,6 @@ public class Screen3Fragment extends Fragment {
         TextView tv = mkText(text, 13, 0xFF5C6370, Typeface.NORMAL);
         LinearLayout.LayoutParams p = fullP(); p.setMargins(dp(4), dp(8), 0, dp(2));
         formContainer.addView(tv, p);
-    }
-
-    private LinearLayout wrap(View child) {
-        LinearLayout ll = new LinearLayout(requireContext());
-        ll.setOrientation(LinearLayout.VERTICAL);
-        ll.addView(child, fullP());
-        return ll;
     }
 
     private EditText mkInput(String hint, String value, int inputType) {
@@ -839,12 +871,6 @@ public class Screen3Fragment extends Fragment {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, dp(5), 0, dp(5)); return p;
-    }
-
-    private LinearLayout.LayoutParams cardP() {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(72));
-        p.setMargins(0, dp(10), 0, dp(14)); return p;
     }
 
     private LinearLayout.LayoutParams wP() {
