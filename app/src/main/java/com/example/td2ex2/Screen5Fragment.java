@@ -127,8 +127,5 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
         controller.centerMapOnIssue(mapView, items.get(itemIndex));
     }
 
-    @Override
-    public Context getContext() {
-        return requireContext();
-    }
+
 }

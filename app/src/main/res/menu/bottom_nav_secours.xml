@@ -1,19 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/nav_detail"
-        android:icon="@android:drawable/ic_menu_info_details"
-        android:title="Détail" />
-    <item
-        android:id="@+id/nav_incidents"
-        android:icon="@android:drawable/ic_menu_agenda"
-        android:title="Incidents" />
-    <item
-        android:id="@+id/nav_alertes"
-        android:icon="@android:drawable/ic_dialog_alert"
-        android:title="Alertes" />
-    <item
-        android:id="@+id/nav_carte"
-        android:icon="@android:drawable/ic_menu_mapmode"
-        android:title="Carte" />
+    <item android:id="@+id/nav_detail"    android:icon="@android:drawable/ic_menu_info_details" android:title="Détail" />
+    <item android:id="@+id/nav_incidents" android:icon="@android:drawable/ic_menu_agenda"       android:title="Incidents" />
+    <item android:id="@+id/nav_alertes"   android:icon="@android:drawable/ic_dialog_alert"      android:title="Alertes" />
+    <item android:id="@+id/nav_carte"     android:icon="@android:drawable/ic_menu_mapmode"      android:title="Carte" />
 </menu>

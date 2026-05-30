@@ -8,13 +8,15 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
- * Activité principale gérant les deux modes :
- *  - MODE_SIGNALANT (startScreen=2) : menu Signaler + Mes alertes
- *  - MODE_SECOURS  (startScreen=0) : menu Détail + Incidents + Alertes + Carte
+ * Activité hôte — deux modes :
+ *  MODE_SIGNALANT (startScreen=2) : Signaler + Mes alertes
+ *  MODE_SECOURS  (startScreen=0) : Détail + Incidents + Alertes + Carte
+ *
+ * Les deux modes partagent IssueManager.getInstance() → les signalements
+ * apparaissent immédiatement dans l'interface secours.
  */
 public class ControlActivity extends AppCompatActivity implements Notifiable, Picturable {
 
-    public static final String EXTRA_MODE = "startScreen";
     public static final int MODE_SECOURS   = 0;
     public static final int MODE_SIGNALANT = 2;
 
@@ -25,9 +27,7 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
     private Screen5Fragment screen5Fragment;
 
     private Issue selectedIssue;
-    private int currentScreen = 0;
     private boolean isSecours = false;
-
     private BottomNavigationView bottomNav;
 
     @Override
@@ -43,18 +43,17 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
 
         bottomNav = findViewById(R.id.bottomNav);
 
-        int startScreen = getIntent().getIntExtra(EXTRA_MODE, MODE_SIGNALANT);
+        int startScreen = getIntent().getIntExtra("startScreen", MODE_SIGNALANT);
         isSecours = (startScreen == MODE_SECOURS);
 
-        // Choisir le bon menu selon le profil
         if (isSecours) {
             bottomNav.inflateMenu(R.menu.bottom_nav_secours);
             setupSecoursNav();
-            showFragmentSecours(0); // commence sur Détail
+            showFragmentSecours(0);
         } else {
             bottomNav.inflateMenu(R.menu.bottom_nav_signalant);
             setupSignalantNav();
-            showFragmentSignalant(0); // commence sur Signaler
+            showFragmentSignalant(0);
         }
     }
 
@@ -73,7 +72,6 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
     }
 
     private void showFragmentSecours(int index) {
-        currentScreen = index;
         Fragment f;
         switch (index) {
             case 1:  f = screen2Fragment; break;
@@ -97,12 +95,9 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
     }
 
     private void showFragmentSignalant(int index) {
-        currentScreen = index;
         Fragment f = (index == 1) ? screen2Fragment : screen3Fragment;
         replace(f);
     }
-
-    // ── Commun ────────────────────────────────────────────────────────────────
 
     private void replace(Fragment f) {
         getSupportFragmentManager()
@@ -111,9 +106,10 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
                 .commit();
     }
 
+    // ── Notifiable ────────────────────────────────────────────────────────────
+
     @Override
     public void onClick(int numFragment) {
-        // Depuis Screen1 → aller à la liste
         if (isSecours) {
             showFragmentSecours(1);
             bottomNav.setSelectedItemId(R.id.nav_incidents);
@@ -122,37 +118,52 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
 
     @Override
     public void onDataChange(int numFragment, Object object, int actionCode, Object argsAction) {
+
+        // Depuis Screen2 (liste incidents) — clic sur un item
         if (numFragment == Screen2Fragment.FRAGMENT_ID) {
             if (actionCode == Screen2Fragment.ACTION_ITEM_CLICKED && object instanceof Issue) {
                 selectedIssue = (Issue) object;
-                screen1Fragment.displayIssue(selectedIssue);
+
                 if (isSecours) {
+                    // Mode secours → afficher le détail
+                    screen1Fragment.displayIssue(selectedIssue);
                     showFragmentSecours(0);
                     bottomNav.setSelectedItemId(R.id.nav_detail);
+                } else {
+                    // Mode signalant → proposer modification
+                    screen3Fragment.startEditing(selectedIssue);
+                    showFragmentSignalant(0);
+                    bottomNav.setSelectedItemId(R.id.nav_signalement);
                 }
             }
         }
 
+        // Depuis Screen3 (signalement envoyé)
         if (numFragment == Screen3Fragment.FRAGMENT_ID) {
             if (object instanceof Issue) {
                 Issue newIssue = (Issue) object;
                 selectedIssue = newIssue;
+
+                // Synchroniser Screen2 (liste incidents signalant)
                 screen2Fragment.addIssue(newIssue);
-                IssueManager.getInstance().addIssue(newIssue);
-                // Screen3 gère lui-même l'affichage de la page succès
+
+                // IssueManager déjà mis à jour dans Screen3Fragment.sendIncident()
+                // Screen5Fragment (carte MVC) sera notifié via ModelObservable
+                // Screen4Fragment (alertes) sera notifié via EmergencyService.AlertListener
+
+                // Screen1 (détail secours) : préparer pour quand le secours ouvrira le détail
+                screen1Fragment.displayIssue(newIssue);
             }
         }
     }
 
     @Override
-    public void onFragmentDisplayed(int fragmentId) {
-        currentScreen = fragmentId;
-    }
+    public void onFragmentDisplayed(int fragmentId) {}
+
+    // ── Picturable ────────────────────────────────────────────────────────────
 
     @Override
     public void onPictureTaken(String photopath) {
-        if (selectedIssue != null) {
-            selectedIssue.setPicture(photopath);
-        }
+        if (selectedIssue != null) selectedIssue.setPicture(photopath);
     }
 }

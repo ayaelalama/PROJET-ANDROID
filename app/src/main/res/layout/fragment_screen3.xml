@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="@color/background">
 
-    <!-- En-tête avec progression -->
     <LinearLayout
         android:id="@+id/progressHeader"
         android:layout_width="match_parent"
@@ -33,7 +32,6 @@
 
     </LinearLayout>
 
-    <!-- Contenu du formulaire — ScrollView avec id pour scroll programmatique -->
     <ScrollView
         android:id="@+id/formScrollView"
         android:layout_width="match_parent"
@@ -52,7 +50,6 @@
 
     </ScrollView>
 
-    <!-- Boutons de navigation fixes en bas -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

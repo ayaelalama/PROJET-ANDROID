@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -21,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -34,10 +36,12 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.squareup.picasso.Picasso;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
@@ -45,10 +49,12 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
+import java.io.File;
+import java.io.IOException;
+
 /**
  * Screen 3 — Flux guidé de signalement d'accident.
- * 01 – Vues/layouts dynamiques  |  02 – Parcelable (Issue)
- * 03 – Fragment  |  08 – Factory  |  11 – GPS/Permissions  |  12 – Notifications
+ * 01–Vues  02–Parcelable  03–Fragment  08–Factory  11–GPS/Caméra  12–Notifications
  */
 public class Screen3Fragment extends Fragment {
 
@@ -56,13 +62,14 @@ public class Screen3Fragment extends Fragment {
     private static final String CHANNEL_ID = "signalement_channel";
 
     private Notifiable notifiable;
-    private ScrollView scrollView;           // ← référence directe au ScrollView
+    private ScrollView scrollView;
     private LinearLayout formContainer;
     private Button backButton, nextButton;
     private TextView stepLabel;
     private LinearLayout progressDots;
 
     private int page = 0;
+    // 0=infos  1=impliqué  2=type  3=blessés  4=gravité  5=photo  6=recap  7=succès
 
     // Données personnelles
     private String nom = "", prenom = "", telephone = "", adresse = "";
@@ -76,16 +83,58 @@ public class Screen3Fragment extends Fragment {
     private boolean locationAcquired = false;
     private FusedLocationProviderClient fusedLocationClient;
 
+    // Photo
+    private String currentPhotoPath = null;
+    private Uri currentPhotoUri = null;
+    private ImageView photoPreview;
+
+    // Incident en cours d'édition (pour modification)
+    private Issue incidentEnCours = null;
+    private boolean modeEdition = false;
+
     // EditText refs
     private EditText nomEdit, prenomEdit, telEdit, jourEdit, moisEdit, anneeEdit, adresseEdit;
 
+    // Permission GPS
     private final ActivityResultLauncher<String> gpsPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) {
-                    fetchLocation(null);
+                    fetchLocation();
                 } else {
                     Toast.makeText(requireContext(),
-                            "Permission GPS refusée. Position par défaut utilisée.", Toast.LENGTH_SHORT).show();
+                            "Permission GPS refusée. Position simulée utilisée (mock).", Toast.LENGTH_LONG).show();
+                    // Mock GPS pour la démo prof
+                    latitude = 43.7009;
+                    longitude = 7.2684;
+                    locationAcquired = true;
+                    if (page == 5 || page == 6) showPage();
+                }
+            });
+
+    // Permission caméra
+    private final ActivityResultLauncher<String> cameraPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) {
+                    launchCamera();
+                } else {
+                    Toast.makeText(requireContext(),
+                            "Permission caméra refusée.", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    // Prise de photo
+    private final ActivityResultLauncher<Uri> takePictureLauncher =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+                if (success && currentPhotoPath != null) {
+                    if (photoPreview != null) {
+                        Picasso.get().load(new File(currentPhotoPath))
+                                .placeholder(R.drawable.ic_camera_placeholder)
+                                .fit().centerCrop().into(photoPreview);
+                    }
+                    Toast.makeText(requireContext(), "📷 Photo enregistrée !", Toast.LENGTH_SHORT).show();
+                } else {
+                    currentPhotoPath = null;
+                    Toast.makeText(requireContext(), "Photo annulée.", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -110,7 +159,7 @@ public class Screen3Fragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        scrollView    = view.findViewById(R.id.formScrollView);   // ← lié au XML
+        scrollView    = view.findViewById(R.id.formScrollView);
         formContainer = view.findViewById(R.id.formContainer);
         backButton    = view.findViewById(R.id.backButton);
         nextButton    = view.findViewById(R.id.nextButton);
@@ -121,15 +170,15 @@ public class Screen3Fragment extends Fragment {
 
         backButton.setOnClickListener(v -> {
             saveInputs();
-            if (page > 0 && page < 6) { page--; showPage(); scrollToTop(); }
+            if (page > 0 && page < 7) { page--; showPage(); scrollToTop(); }
         });
 
         nextButton.setOnClickListener(v -> {
             saveInputs();
-            if (!validateCurrentPage()) return;   // ← VALIDATION
-            if (page == 5) {
+            if (!validateCurrentPage()) return;
+            if (page == 6) {
                 sendIncident();
-            } else if (page < 5) {
+            } else if (page < 6) {
                 page++;
                 showPage();
                 scrollToTop();
@@ -138,6 +187,17 @@ public class Screen3Fragment extends Fragment {
 
         createNotificationChannel();
         showPage();
+    }
+
+    // ── Mode édition (appelé depuis Screen2Fragment) ───────────────────────────
+
+    public void startEditing(Issue issue) {
+        this.incidentEnCours = issue;
+        this.modeEdition = true;
+        // Pré-remplir depuis la description de l'issue
+        page = 0;
+        showPage();
+        scrollToTop();
     }
 
     private void scrollToTop() {
@@ -149,123 +209,84 @@ public class Screen3Fragment extends Fragment {
     private boolean validateCurrentPage() {
         switch (page) {
             case 0: return validatePersonalInfo();
-            case 1: return validateQuestion(concerne,     "Veuillez indiquer si vous êtes impliqué(e) ou témoin.");
-            case 2: return validateQuestion(typeAccident, "Veuillez sélectionner le type d'accident.");
-            case 3: return validateQuestion(blesses,      "Veuillez indiquer s'il y a des blessés.");
-            case 4: return validateQuestion(gravite,      "Veuillez indiquer la gravité de la situation.");
+            case 1: return validateQ(concerne,     "Veuillez indiquer si vous êtes impliqué(e) ou témoin.");
+            case 2: return validateQ(typeAccident, "Veuillez sélectionner le type d'accident.");
+            case 3: return validateQ(blesses,      "Veuillez indiquer s'il y a des blessés.");
+            case 4: return validateQ(gravite,      "Veuillez indiquer la gravité de la situation.");
             default: return true;
         }
     }
 
-    private boolean validateQuestion(String value, String errorMsg) {
+    private boolean validateQ(String value, String msg) {
         if (value == null || value.trim().isEmpty()) {
-            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show(); return false;
         }
         return true;
     }
 
     private boolean validatePersonalInfo() {
-        // Nom
-        if (nom.trim().isEmpty()) {
-            showError(nomEdit, "Le nom est obligatoire.");
-            return false;
-        }
-        if (!nom.matches("[a-zA-ZÀ-ÿ\\s'-]+")) {
-            showError(nomEdit, "Le nom ne doit contenir que des lettres.");
-            return false;
-        }
-        // Prénom
-        if (prenom.trim().isEmpty()) {
-            showError(prenomEdit, "Le prénom est obligatoire.");
-            return false;
-        }
-        if (!prenom.matches("[a-zA-ZÀ-ÿ\\s'-]+")) {
-            showError(prenomEdit, "Le prénom ne doit contenir que des lettres.");
-            return false;
-        }
-        // Téléphone : 10 chiffres
-        if (!telephone.matches("0[0-9]{9}")) {
-            showError(telEdit, "Téléphone invalide. Format attendu : 0XXXXXXXXX (10 chiffres).");
-            return false;
-        }
-        // Date de naissance
+        if (nom.trim().isEmpty()) { showErr(nomEdit, "Nom obligatoire."); return false; }
+        if (!nom.matches("[a-zA-ZÀ-ÿ\\s'\\-]+")) { showErr(nomEdit, "Lettres uniquement."); return false; }
+        if (prenom.trim().isEmpty()) { showErr(prenomEdit, "Prénom obligatoire."); return false; }
+        if (!telephone.matches("0[0-9]{9}")) { showErr(telEdit, "Format 0XXXXXXXXX (10 chiffres)."); return false; }
         if (!isValidDate(jour, mois, annee)) {
-            Toast.makeText(requireContext(),
-                    "Date de naissance invalide. Format : JJ/MM/AAAA.", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), "Date invalide (JJ/MM/AAAA).", Toast.LENGTH_LONG).show();
             return false;
         }
         return true;
     }
 
-    private void showError(EditText field, String message) {
-        if (field != null) field.setError(message);
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+    private void showErr(EditText f, String msg) {
+        if (f != null) f.setError(msg);
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
     }
 
     private boolean isValidDate(String j, String m, String a) {
         try {
-            int day   = Integer.parseInt(j);
-            int month = Integer.parseInt(m);
-            int year  = Integer.parseInt(a);
-            if (month < 1 || month > 12) return false;
-            if (day < 1 || day > 31)     return false;
-            if (year < 1900 || year > 2025) return false;
-            // mois à 30 jours
-            if ((month == 4 || month == 6 || month == 9 || month == 11) && day > 30) return false;
-            // février
-            if (month == 2) {
-                boolean leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-                if (day > (leap ? 29 : 28)) return false;
-            }
+            int d = Integer.parseInt(j), mo = Integer.parseInt(m), y = Integer.parseInt(a);
+            if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1900 || y > 2025) return false;
+            if ((mo == 4||mo==6||mo==9||mo==11) && d > 30) return false;
+            if (mo == 2) { boolean leap = (y%4==0&&y%100!=0)||(y%400==0); if (d > (leap?29:28)) return false; }
             return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        } catch (NumberFormatException e) { return false; }
     }
 
-    // ── Navigation ────────────────────────────────────────────────────────────
+    // ── Pages ─────────────────────────────────────────────────────────────────
 
     private void showPage() {
         formContainer.removeAllViews();
+        photoPreview = null;
 
-        backButton.setVisibility(page > 0 && page < 6 ? View.VISIBLE : View.INVISIBLE);
-        nextButton.setVisibility(page < 6 ? View.VISIBLE : View.GONE);
+        backButton.setVisibility(page > 0 && page < 7 ? View.VISIBLE : View.INVISIBLE);
+        nextButton.setVisibility(page < 7 ? View.VISIBLE : View.GONE);
 
         updateHeader();
 
         switch (page) {
             case 0: showPersonalInfo(); break;
             case 1: showQuestion("Étape 1/4", "Vous êtes concerné(e) par l'accident ?",
-                        new String[]{"Oui, je suis impliqué(e)", "Non, je suis témoin"}, 1);
-                    break;
-            case 2: showQuestion("Étape 2/4", "Quel type d'accident voyez-vous ?",
-                        new String[]{"Collision entre véhicules", "Véhicule seul",
-                                     "Moto / Scooter", "Piéton / cycliste",
-                                     "Plusieurs véhicules", "Je ne sais pas"}, 2);
-                    break;
+                        new String[]{"Oui, je suis impliqué(e)", "Non, je suis témoin"}, 1); break;
+            case 2: showQuestion("Étape 2/4", "Quel type d'accident ?",
+                        new String[]{"Collision entre véhicules","Véhicule seul","Moto / Scooter",
+                                     "Piéton / cycliste","Plusieurs véhicules","Je ne sais pas"}, 2); break;
             case 3: showQuestion("Étape 3/4", "Y a-t-il des blessés ?",
-                        new String[]{"Oui", "Non", "Je ne sais pas"}, 3);
-                    break;
-            case 4: showQuestion("Étape 4/4", "Quelle est la gravité de la situation ?",
-                        new String[]{"Dégâts légers", "Situation préoccupante",
-                                     "Danger immédiat / blessé grave"}, 4);
-                    break;
-            case 5: showLocationAndRecap(); break;
-            case 6: showSuccess(); break;
+                        new String[]{"Oui","Non","Je ne sais pas"}, 3); break;
+            case 4: showQuestion("Étape 4/4", "Quelle est la gravité ?",
+                        new String[]{"Dégâts légers","Situation préoccupante","Danger immédiat / blessé grave"}, 4); break;
+            case 5: showPhotoPage(); break;
+            case 6: showRecapAndLocation(); break;
+            case 7: showSuccess(); break;
         }
     }
 
     private void updateHeader() {
         if (stepLabel == null || progressDots == null) return;
-        String[] labels = {"Vos informations", "Êtes-vous impliqué ?",
-                           "Type d'accident", "Blessés ?", "Gravité",
-                           "Localisation & Récap", "✅ Envoyé"};
+        String[] labels = {"Vos informations","Êtes-vous impliqué ?","Type d'accident",
+                           "Blessés ?","Gravité","Photo de la scène","Récap & Localisation","✅ Envoyé"};
         stepLabel.setText(page < labels.length ? labels[page] : "");
-
         progressDots.removeAllViews();
-        if (page == 6) return;
-        for (int i = 0; i <= 5; i++) {
+        if (page == 7) return;
+        for (int i = 0; i <= 6; i++) {
             View dot = new View(requireContext());
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(i == page ? 24 : 8), dp(8));
             lp.setMargins(dp(3), 0, dp(3), 0);
@@ -278,100 +299,153 @@ public class Screen3Fragment extends Fragment {
         }
     }
 
-    // ── Pages ─────────────────────────────────────────────────────────────────
+    // ── Page infos personnelles ───────────────────────────────────────────────
 
     private void showPersonalInfo() {
         nextButton.setText("Suivant →");
-        addSectionTitle("Vos informations");
-        addSectionSubtitle("Ces informations aident les secours à vous identifier.");
+        addTitle("Vos informations");
+        addSubtitle(modeEdition ? "⚠️ Mode modification — corrigez vos informations" :
+                "Ces informations aident les secours à vous identifier.");
 
-        // Avertissement champs obligatoires
-        TextView req = createText("* Tous les champs sont obligatoires", 12, 0xFFD32F2F, Typeface.ITALIC);
-        formContainer.addView(req, fullParams());
+        TextView req = mkText("* Champs obligatoires", 12, 0xFFD32F2F, Typeface.ITALIC);
+        formContainer.addView(req, fullP());
 
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
-        nomEdit    = createInput("Nom *", nom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        prenomEdit = createInput("Prénom *", prenom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        row.addView(nomEdit, weightParams());
-        row.addView(prenomEdit, weightParams());
-        formContainer.addView(row, fullParams());
+        nomEdit    = mkInput("Nom *", nom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        prenomEdit = mkInput("Prénom *", prenom, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        row.addView(nomEdit, wP()); row.addView(prenomEdit, wP());
+        formContainer.addView(row, fullP());
 
-        telEdit = createInput("Téléphone * (0XXXXXXXXX)", telephone, InputType.TYPE_CLASS_PHONE);
+        telEdit = mkInput("Téléphone * (0XXXXXXXXX)", telephone, InputType.TYPE_CLASS_PHONE);
         telEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(10)});
-        formContainer.addView(wrap(telEdit), fullParams());
+        formContainer.addView(wrap(telEdit), fullP());
 
         addLabel("Date de naissance *");
         LinearLayout dateRow = new LinearLayout(requireContext());
         dateRow.setOrientation(LinearLayout.HORIZONTAL);
-        jourEdit  = createInput("JJ", jour, InputType.TYPE_CLASS_NUMBER);
-        moisEdit  = createInput("MM", mois, InputType.TYPE_CLASS_NUMBER);
-        anneeEdit = createInput("AAAA", annee, InputType.TYPE_CLASS_NUMBER);
+        jourEdit  = mkInput("JJ", jour,  InputType.TYPE_CLASS_NUMBER);
+        moisEdit  = mkInput("MM", mois,  InputType.TYPE_CLASS_NUMBER);
+        anneeEdit = mkInput("AAAA", annee, InputType.TYPE_CLASS_NUMBER);
         jourEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
         moisEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});
         anneeEdit.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4)});
-        dateRow.addView(jourEdit, weightParams());
-        dateRow.addView(moisEdit, weightParams());
-        dateRow.addView(anneeEdit, weightParams());
-        formContainer.addView(dateRow, fullParams());
+        dateRow.addView(jourEdit, wP()); dateRow.addView(moisEdit, wP()); dateRow.addView(anneeEdit, wP());
+        formContainer.addView(dateRow, fullP());
 
-        adresseEdit = createInput("Adresse (optionnel)", adresse, InputType.TYPE_CLASS_TEXT);
-        formContainer.addView(wrap(adresseEdit), fullParams());
+        adresseEdit = mkInput("Adresse (optionnel)", adresse, InputType.TYPE_CLASS_TEXT);
+        formContainer.addView(wrap(adresseEdit), fullP());
     }
+
+    // ── Page questionnaire ────────────────────────────────────────────────────
 
     private void showQuestion(String step, String question, String[] options, int qNum) {
         nextButton.setText("Suivant →");
-        addSectionTitle("Questionnaire");
+        addTitle("Questionnaire");
 
-        TextView stepTv = createText(step, 13, 0xFF5C6370, Typeface.NORMAL);
+        TextView stepTv = mkText(step, 13, 0xFF5C6370, Typeface.NORMAL);
         stepTv.setGravity(Gravity.END);
-        formContainer.addView(stepTv, fullParams());
+        formContainer.addView(stepTv, fullP());
 
-        TextView qTv = createText(question, 18, 0xFF1A1A2E, Typeface.BOLD);
+        TextView qTv = mkText(question, 18, 0xFF1A1A2E, Typeface.BOLD);
         qTv.setGravity(Gravity.CENTER);
         qTv.setPadding(dp(16), dp(20), dp(16), dp(20));
-        qTv.setBackground(cardDrawable(0xFFE3F2FD));
-        formContainer.addView(qTv, cardParams());
+        qTv.setBackground(card(0xFFE3F2FD));
+        formContainer.addView(qTv, cardP());
 
-        // Avertissement si pas encore sélectionné
-        boolean anySelected = isAnySelected(qNum);
-        if (!anySelected) {
-            TextView hint = createText("👆 Sélectionnez une option pour continuer", 13, 0xFF5C6370, Typeface.ITALIC);
+        if (!anySelected(qNum)) {
+            TextView hint = mkText("👆 Sélectionnez une option pour continuer", 13, 0xFF5C6370, Typeface.ITALIC);
             hint.setGravity(Gravity.CENTER);
-            formContainer.addView(hint, fullParams());
+            formContainer.addView(hint, fullP());
         }
 
-        for (String opt : options) {
-            addOptionButton(opt, qNum);
-        }
+        for (String opt : options) addOption(opt, qNum);
     }
 
-    private boolean isAnySelected(int qNum) {
-        switch (qNum) {
-            case 1: return !concerne.isEmpty();
-            case 2: return !typeAccident.isEmpty();
-            case 3: return !blesses.isEmpty();
-            case 4: return !gravite.isEmpty();
-            default: return false;
+    // ── Page photo ────────────────────────────────────────────────────────────
+
+    private void showPhotoPage() {
+        nextButton.setText("Suivant →");
+        addTitle("📷 Photo de la scène");
+        addSubtitle("Prenez une photo de la scène pour aider les secours.\n(Optionnel mais recommandé)");
+
+        // Aperçu photo
+        photoPreview = new ImageView(requireContext());
+        photoPreview.setAdjustViewBounds(true);
+        photoPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams imgP = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(220));
+        imgP.setMargins(0, dp(8), 0, dp(8));
+        photoPreview.setBackground(card(0xFFF0F4F8));
+
+        if (currentPhotoPath != null) {
+            Picasso.get().load(new File(currentPhotoPath))
+                    .placeholder(R.drawable.ic_camera_placeholder)
+                    .fit().centerCrop().into(photoPreview);
+        } else {
+            photoPreview.setImageResource(R.drawable.ic_camera_placeholder);
         }
+        formContainer.addView(photoPreview, imgP);
+
+        // Bouton photo
+        Button btnPhoto = new Button(requireContext());
+        btnPhoto.setText(currentPhotoPath != null ? "📷 Reprendre la photo" : "📷 Prendre une photo");
+        btnPhoto.setAllCaps(false);
+        btnPhoto.setTextColor(Color.WHITE);
+        btnPhoto.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1565C0));
+        btnPhoto.setOnClickListener(v -> checkCameraAndTake());
+        formContainer.addView(btnPhoto, fullP());
+
+        if (currentPhotoPath != null) {
+            TextView ok = mkText("✅ Photo enregistrée", 13, 0xFF2E7D32, Typeface.BOLD);
+            ok.setGravity(Gravity.CENTER);
+            formContainer.addView(ok, fullP());
+        }
+
+        // Bouton passer
+        Button btnSkip = new Button(requireContext());
+        btnSkip.setText("Passer cette étape →");
+        btnSkip.setAllCaps(false);
+        btnSkip.setTextColor(0xFF5C6370);
+        btnSkip.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFF0F4F8));
+        btnSkip.setOnClickListener(v -> { page++; showPage(); scrollToTop(); });
+        formContainer.addView(btnSkip, fullP());
+        nextButton.setVisibility(View.GONE); // on navigue via les boutons ci-dessus
+        backButton.setVisibility(View.VISIBLE);
     }
 
-    private void showLocationAndRecap() {
+    // ── Page récap + GPS ──────────────────────────────────────────────────────
+
+    private void showRecapAndLocation() {
         nextButton.setText("✅ Confirmer et envoyer");
-        addSectionTitle("Récapitulatif & Localisation");
-        addSectionSubtitle("Vérifiez vos informations avant envoi.");
+        addTitle("Récapitulatif & Localisation");
+        addSubtitle("Vérifiez vos informations. Appuyez sur un champ pour le modifier.");
 
-        recapCard("👤 Vous", nom + " " + prenom + "  |  " + telephone +
+        // Récap modifiable
+        addRecapEditable("👤 Identité", nom + " " + prenom + "\nTél : " + telephone +
                 "\nNé(e) le : " + jour + "/" + mois + "/" + annee +
-                (adresse.isEmpty() ? "" : "\n" + adresse));
+                (adresse.isEmpty() ? "" : "\n" + adresse), 0);
+        addRecapEditable("🚨 Accident", "Impliqué : " + v(concerne) +
+                "\nType : " + v(typeAccident) + "\nBlessés : " + v(blesses) +
+                "\nGravité : " + v(gravite), 2);
 
-        recapCard("🚨 Accident", "Impliqué : " + value(concerne) +
-                "\nType : " + value(typeAccident) +
-                "\nBlessés : " + value(blesses) +
-                "\nGravité : " + value(gravite));
+        // Photo miniature si disponible
+        if (currentPhotoPath != null) {
+            addSubtitle("📷 Photo jointe :");
+            ImageView mini = new ImageView(requireContext());
+            mini.setAdjustViewBounds(true);
+            mini.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(120));
+            mp.setMargins(0, dp(4), 0, dp(8));
+            Picasso.get().load(new File(currentPhotoPath))
+                    .placeholder(R.drawable.ic_camera_placeholder).fit().centerCrop().into(mini);
+            formContainer.addView(mini, mp);
+        }
 
-        addSectionSubtitle("📍 Localisation GPS");
-        if (!locationAcquired) requestLocation();
+        // GPS
+        addSubtitle("📍 Localisation GPS");
+        if (!locationAcquired) requestGPS();
 
         Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
         MapView map = new MapView(requireContext());
@@ -381,36 +455,74 @@ public class Screen3Fragment extends Fragment {
         map.getController().setZoom(16.0);
         map.getController().setCenter(pt);
         Marker marker = new Marker(map);
-        marker.setPosition(pt);
-        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setPosition(pt); marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
         marker.setTitle("Lieu de l'accident");
-        map.getOverlays().add(marker);
-        map.invalidate();
+        map.getOverlays().add(marker); map.invalidate();
 
-        LinearLayout.LayoutParams mapParams = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams mapP = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(220));
-        mapParams.setMargins(0, dp(8), 0, dp(8));
-        formContainer.addView(map, mapParams);
+        mapP.setMargins(0, dp(8), 0, dp(8));
+        formContainer.addView(map, mapP);
 
-        TextView coordTv = createText(
+        TextView coordTv = mkText(
                 locationAcquired
-                        ? "✅ GPS : " + String.format("%.5f, %.5f", latitude, longitude)
-                        : "⏳ Récupération GPS en cours…",
+                    ? "✅ GPS : " + String.format("%.5f, %.5f", latitude, longitude)
+                    : "⏳ Récupération GPS en cours… (mock si refus)",
                 14, 0xFF1565C0, Typeface.NORMAL);
         coordTv.setGravity(Gravity.CENTER);
-        formContainer.addView(coordTv, fullParams());
+        formContainer.addView(coordTv, fullP());
 
         Button retryBtn = new Button(requireContext());
-        retryBtn.setText("↻  Actualiser la position");
+        retryBtn.setText("↻ Actualiser la position GPS");
         retryBtn.setAllCaps(false);
         retryBtn.setTextColor(0xFF1565C0);
         retryBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE3F2FD));
-        LinearLayout.LayoutParams retryP = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams rP = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, dp(46));
-        retryP.gravity = Gravity.CENTER_HORIZONTAL;
-        retryP.setMargins(0, dp(4), 0, dp(4));
+        rP.gravity = Gravity.CENTER_HORIZONTAL;
         retryBtn.setOnClickListener(v -> { locationAcquired = false; showPage(); });
-        formContainer.addView(retryBtn, retryP);
+        formContainer.addView(retryBtn, rP);
+    }
+
+    // Bloc recap cliquable pour modifier
+    private void addRecapEditable(String title, String content, int goToPage) {
+        LinearLayout card = new LinearLayout(requireContext());
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(card(0xFFFFFFFF));
+
+        LinearLayout header = new LinearLayout(requireContext());
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView t = mkText(title, 13, 0xFF1565C0, Typeface.BOLD);
+        t.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        header.addView(t);
+
+        TextView edit = mkText("✏️ Modifier", 12, 0xFF1565C0, Typeface.NORMAL);
+        header.addView(edit);
+        card.addView(header, fullP());
+
+        TextView c = mkText(content, 14, 0xFF1A1A2E, Typeface.NORMAL);
+        LinearLayout.LayoutParams cp = fullP(); cp.setMargins(0, dp(4), 0, 0);
+        card.addView(c, cp);
+
+        LinearLayout.LayoutParams lp = fullP(); lp.setMargins(0, dp(8), 0, dp(8));
+        formContainer.addView(card, lp);
+
+        // Clic = retour à la page correspondante
+        card.setOnClickListener(v -> {
+            page = goToPage;
+            showPage();
+            scrollToTop();
+            Toast.makeText(requireContext(), "Modifiez puis cliquez Suivant pour revenir.", Toast.LENGTH_SHORT).show();
+        });
+        edit.setOnClickListener(v -> {
+            page = goToPage;
+            showPage();
+            scrollToTop();
+            Toast.makeText(requireContext(), "Modifiez puis cliquez Suivant pour revenir.", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void showSuccess() {
@@ -421,27 +533,25 @@ public class Screen3Fragment extends Fragment {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         card.setPadding(dp(24), dp(40), dp(24), dp(40));
-        card.setBackground(cardDrawable(0xFFFFFFFF));
+        card.setBackground(card(0xFFFFFFFF));
 
-        TextView emoji = createText("✅", 64, 0xFF2E7D32, Typeface.NORMAL);
+        TextView emoji = mkText("✅", 64, 0xFF2E7D32, Typeface.NORMAL);
         emoji.setGravity(Gravity.CENTER);
-        card.addView(emoji, fullParams());
+        card.addView(emoji, fullP());
 
-        TextView title = createText("Alerte transmise !", 24, 0xFF2E7D32, Typeface.BOLD);
+        TextView title = mkText("Alerte transmise !", 24, 0xFF2E7D32, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams tp = fullParams();
-        tp.setMargins(0, dp(12), 0, dp(8));
+        LinearLayout.LayoutParams tp = fullP(); tp.setMargins(0, dp(12), 0, dp(8));
         card.addView(title, tp);
 
-        TextView sub = createText(
-                "Votre signalement a bien été envoyé aux services compétents.\n\n" +
-                "Les secours ont été alertés et interviendront dans les plus brefs délais.",
+        TextView sub = mkText("Votre signalement a bien été envoyé aux services compétents.\n\n" +
+                "Les secours ont été alertés et interviendront dans les plus brefs délais.\n\n" +
+                "Restez en sécurité et ne bougez pas le véhicule si possible.",
                 15, 0xFF5C6370, Typeface.NORMAL);
         sub.setGravity(Gravity.CENTER);
-        card.addView(sub, fullParams());
+        card.addView(sub, fullP());
 
-        LinearLayout.LayoutParams cp = fullParams();
-        cp.setMargins(0, dp(40), 0, dp(24));
+        LinearLayout.LayoutParams cp = fullP(); cp.setMargins(0, dp(40), 0, dp(24));
         formContainer.addView(card, cp);
 
         Button newReport = new Button(requireContext());
@@ -450,68 +560,121 @@ public class Screen3Fragment extends Fragment {
         newReport.setTextColor(Color.WHITE);
         newReport.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1565C0));
         newReport.setOnClickListener(v -> { resetForm(); page = 0; showPage(); scrollToTop(); });
-        formContainer.addView(newReport, fullParams());
+        formContainer.addView(newReport, fullP());
     }
 
     // ── Envoi ─────────────────────────────────────────────────────────────────
 
     private void sendIncident() {
         Issue.Priority priority;
-        if ("Danger immédiat / blessé grave".equals(gravite))  priority = Issue.Priority.CRITICAL;
-        else if ("Situation préoccupante".equals(gravite))      priority = Issue.Priority.HIGH;
-        else                                                     priority = Issue.Priority.MEDIUM;
+        if ("Danger immédiat / blessé grave".equals(gravite)) priority = Issue.Priority.CRITICAL;
+        else if ("Situation préoccupante".equals(gravite))    priority = Issue.Priority.HIGH;
+        else                                                   priority = Issue.Priority.MEDIUM;
 
-        AccidentFactory factory;
-        if ("Plusieurs véhicules".equals(typeAccident) || "Collision entre véhicules".equals(typeAccident))
-            factory = new HighwayFactory();
-        else
-            factory = new UrbanFactory();
+        AccidentFactory factory = ("Plusieurs véhicules".equals(typeAccident) ||
+                "Collision entre véhicules".equals(typeAccident))
+                ? new HighwayFactory() : new UrbanFactory();
 
         String titleStr = "Accident — " + prenom + " " + nom;
         String desc = "Tél : " + telephone + "\nNé(e) le : " + jour + "/" + mois + "/" + annee
                 + (adresse.isEmpty() ? "" : "\nAdresse : " + adresse)
                 + "\nImpliqué : " + concerne + "\nType : " + typeAccident
                 + "\nBlessés : " + blesses + "\nGravité : " + gravite
-                + "\nGPS : " + String.format("%.5f, %.5f", latitude, longitude);
+                + "\nGPS : " + String.format("%.5f, %.5f", latitude, longitude)
+                + (currentPhotoPath != null ? "\n📷 Photo jointe" : "");
 
-        Issue issue = factory.createIssue(titleStr, desc);
-        issue.setPriority(priority);
-        issue.setStatus(2f);
-        issue.setLocation(latitude, longitude);
+        if (modeEdition && incidentEnCours != null) {
+            // Mise à jour de l'issue existante
+            incidentEnCours.setPriority(priority);
+            incidentEnCours.setLocation(latitude, longitude);
+            if (currentPhotoPath != null) incidentEnCours.setPicture(currentPhotoPath);
+            // Notifier l'observer
+            EmergencyService.getInstance().onStatusChanged(incidentEnCours);
+            sendLocalNotification("Signalement modifié", titleStr);
+            if (notifiable != null) {
+                notifiable.onDataChange(FRAGMENT_ID, incidentEnCours, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
+            }
+            modeEdition = false;
+        } else {
+            Issue issue = factory.createIssue(titleStr, desc);
+            issue.setPriority(priority);
+            issue.setStatus(2f);
+            issue.setLocation(latitude, longitude);
+            if (currentPhotoPath != null) issue.setPicture(currentPhotoPath);
 
-        sendLocalNotification(titleStr, "Gravité : " + gravite + " | GPS enregistré");
+            // Ajouter à l'IssueManager (partagé → visible dans Secours)
+            IssueManager.getInstance().addIssue(issue);
+            issue.addObserver(EmergencyService.getInstance());
+            EmergencyService.getInstance().onStatusChanged(issue);
 
-        if (notifiable != null) {
-            notifiable.onDataChange(FRAGMENT_ID, issue, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
+            sendLocalNotification(titleStr, "Gravité : " + gravite + " | GPS enregistré");
+
+            if (notifiable != null) {
+                notifiable.onDataChange(FRAGMENT_ID, issue, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
+            }
         }
 
-        page = 6;
+        page = 7;
         showPage();
         scrollToTop();
     }
 
     // ── GPS ───────────────────────────────────────────────────────────────────
 
-    private void requestLocation() {
+    private void requestGPS() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-            fetchLocation(null);
+            fetchLocation();
         } else {
+            // Demande explicite à l'utilisateur
             gpsPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
         }
     }
 
     @SuppressLint("MissingPermission")
-    private void fetchLocation(Runnable onDone) {
+    private void fetchLocation() {
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
                 latitude = location.getLatitude();
                 longitude = location.getLongitude();
                 locationAcquired = true;
-                if (page == 5) showPage();
+                if (page == 6) showPage();
+            } else {
+                // L'émulateur n'a pas de localisation réelle → mock
+                latitude = 43.7009; longitude = 7.2684;
+                locationAcquired = true;
+                Toast.makeText(requireContext(),
+                        "GPS : position simulée (émulateur sans GPS réel)", Toast.LENGTH_SHORT).show();
+                if (page == 6) showPage();
             }
-            if (onDone != null) onDone.run();
+        }).addOnFailureListener(e -> {
+            latitude = 43.7009; longitude = 7.2684;
+            locationAcquired = true;
+            if (page == 6) showPage();
         });
+    }
+
+    // ── Caméra ────────────────────────────────────────────────────────────────
+
+    private void checkCameraAndTake() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            launchCamera();
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA);
+        }
+    }
+
+    private void launchCamera() {
+        try {
+            File photoFile = File.createTempFile("alerte_", ".jpg", requireContext().getCacheDir());
+            currentPhotoPath = photoFile.getAbsolutePath();
+            currentPhotoUri = FileProvider.getUriForFile(
+                    requireContext(), requireContext().getPackageName() + ".fileprovider", photoFile);
+            takePictureLauncher.launch(currentPhotoUri);
+        } catch (IOException e) {
+            Toast.makeText(requireContext(), "Erreur création fichier photo.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
@@ -520,7 +683,7 @@ public class Screen3Fragment extends Fragment {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
                     CHANNEL_ID, "Signalement accident", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("Confirmation d'envoi des signalements d'accident");
+            ch.setDescription("Confirmation d'envoi des signalements");
             NotificationManager nm = requireContext().getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(ch);
         }
@@ -535,7 +698,7 @@ public class Screen3Fragment extends Fragment {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(requireContext(), 0, intent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
+        NotificationCompat.Builder b = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle("🚨 " + title)
                 .setContentText(body)
@@ -544,23 +707,21 @@ public class Screen3Fragment extends Fragment {
                 .setAutoCancel(true)
                 .setContentIntent(pi);
         NotificationManagerCompat.from(requireContext())
-                .notify((int) System.currentTimeMillis(), builder.build());
+                .notify((int) System.currentTimeMillis(), b.build());
     }
 
-    // ── Helpers UI ────────────────────────────────────────────────────────────
+    // ── UI helpers ────────────────────────────────────────────────────────────
 
-    private void addOptionButton(String option, int qNum) {
-        boolean selected = isSelected(option, qNum);
-        TextView tv = createText(option, 15, selected ? 0xFF1565C0 : 0xFF1A1A2E, Typeface.NORMAL);
+    private void addOption(String option, int qNum) {
+        boolean sel = isSelected(option, qNum);
+        TextView tv = mkText(option, 15, sel ? 0xFF1565C0 : 0xFF1A1A2E, Typeface.NORMAL);
         tv.setGravity(Gravity.CENTER);
-        tv.setBackground(selected
-                ? drawable(0xFFE3F2FD, 0xFF1565C0, 2)
-                : drawable(0xFFF0F4F8, 0xFFD0D8E4, 1));
+        tv.setBackground(sel ? shape(0xFFE3F2FD, 0xFF1565C0, 2) : shape(0xFFF0F4F8, 0xFFD0D8E4, 1));
         tv.setOnClickListener(v -> {
-            if (qNum == 1)      concerne     = option;
-            else if (qNum == 2) typeAccident = option;
-            else if (qNum == 3) blesses      = option;
-            else if (qNum == 4) gravite      = option;
+            if (qNum==1) concerne=option;
+            else if (qNum==2) typeAccident=option;
+            else if (qNum==3) blesses=option;
+            else if (qNum==4) gravite=option;
             showPage();
         });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
@@ -579,71 +740,56 @@ public class Screen3Fragment extends Fragment {
         }
     }
 
-    private void recapCard(String title, String content) {
-        LinearLayout card = new LinearLayout(requireContext());
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackground(cardDrawable(0xFFFFFFFF));
-        TextView t = createText(title, 13, 0xFF1565C0, Typeface.BOLD);
-        card.addView(t, fullParams());
-        TextView c = createText(content, 14, 0xFF1A1A2E, Typeface.NORMAL);
-        LinearLayout.LayoutParams cp = fullParams();
-        cp.setMargins(0, dp(4), 0, 0);
-        card.addView(c, cp);
-        LinearLayout.LayoutParams lp = fullParams();
-        lp.setMargins(0, dp(8), 0, dp(8));
-        formContainer.addView(card, lp);
+    private boolean anySelected(int qNum) {
+        switch (qNum) {
+            case 1: return !concerne.isEmpty();
+            case 2: return !typeAccident.isEmpty();
+            case 3: return !blesses.isEmpty();
+            case 4: return !gravite.isEmpty();
+            default: return false;
+        }
     }
 
-    private void addSectionTitle(String text) {
-        TextView tv = createText(text, 20, 0xFF1565C0, Typeface.BOLD);
+    private void addTitle(String text) {
+        TextView tv = mkText(text, 20, 0xFF1565C0, Typeface.BOLD);
         tv.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams p = fullParams();
-        p.setMargins(0, dp(8), 0, dp(16));
+        LinearLayout.LayoutParams p = fullP(); p.setMargins(0, dp(8), 0, dp(16));
         formContainer.addView(tv, p);
     }
 
-    private void addSectionSubtitle(String text) {
-        TextView tv = createText(text, 14, 0xFF5C6370, Typeface.NORMAL);
+    private void addSubtitle(String text) {
+        TextView tv = mkText(text, 14, 0xFF5C6370, Typeface.NORMAL);
         tv.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams p = fullParams();
-        p.setMargins(0, dp(4), 0, dp(12));
+        LinearLayout.LayoutParams p = fullP(); p.setMargins(0, dp(4), 0, dp(12));
         formContainer.addView(tv, p);
     }
 
     private void addLabel(String text) {
-        TextView tv = createText(text, 13, 0xFF5C6370, Typeface.NORMAL);
-        tv.setGravity(Gravity.START);
-        LinearLayout.LayoutParams p = fullParams();
-        p.setMargins(dp(4), dp(8), 0, dp(2));
+        TextView tv = mkText(text, 13, 0xFF5C6370, Typeface.NORMAL);
+        LinearLayout.LayoutParams p = fullP(); p.setMargins(dp(4), dp(8), 0, dp(2));
         formContainer.addView(tv, p);
     }
 
     private LinearLayout wrap(View child) {
         LinearLayout ll = new LinearLayout(requireContext());
         ll.setOrientation(LinearLayout.VERTICAL);
-        ll.addView(child, fullParams());
+        ll.addView(child, fullP());
         return ll;
     }
 
-    private EditText createInput(String hint, String value, int inputType) {
+    private EditText mkInput(String hint, String value, int inputType) {
         EditText e = new EditText(requireContext());
-        e.setHint(hint);
-        e.setText(value);
-        e.setTextSize(15);
-        e.setSingleLine(true);
-        e.setInputType(inputType);
-        e.setBackground(inputDrawable());
+        e.setHint(hint); e.setText(value); e.setTextSize(15);
+        e.setSingleLine(true); e.setInputType(inputType);
+        e.setBackground(inputBg());
         e.setPadding(dp(14), dp(12), dp(14), dp(12));
         e.setMinHeight(dp(52));
         return e;
     }
 
-    private TextView createText(String text, int sizeSp, int color, int style) {
+    private TextView mkText(String text, int sp, int color, int style) {
         TextView tv = new TextView(requireContext());
-        tv.setText(text);
-        tv.setTextSize(sizeSp);
-        tv.setTextColor(color);
+        tv.setText(text); tv.setTextSize(sp); tv.setTextColor(color);
         tv.setTypeface(Typeface.DEFAULT, style);
         tv.setPadding(dp(10), dp(8), dp(10), dp(8));
         return tv;
@@ -656,31 +802,32 @@ public class Screen3Fragment extends Fragment {
         if (jourEdit   != null) jour      = jourEdit.getText().toString().trim();
         if (moisEdit   != null) mois      = moisEdit.getText().toString().trim();
         if (anneeEdit  != null) annee     = anneeEdit.getText().toString().trim();
-        if (adresseEdit != null) adresse  = adresseEdit.getText().toString().trim();
+        if (adresseEdit!= null) adresse   = adresseEdit.getText().toString().trim();
     }
 
     private void resetForm() {
-        nom = ""; prenom = ""; telephone = ""; adresse = "";
-        jour = ""; mois = ""; annee = "";
-        concerne = ""; typeAccident = ""; blesses = ""; gravite = "";
-        locationAcquired = false;
+        nom=""; prenom=""; telephone=""; adresse="";
+        jour=""; mois=""; annee="";
+        concerne=""; typeAccident=""; blesses=""; gravite="";
+        currentPhotoPath=null; currentPhotoUri=null;
+        locationAcquired=false; modeEdition=false; incidentEnCours=null;
     }
 
     // ── Drawables ─────────────────────────────────────────────────────────────
 
-    private GradientDrawable cardDrawable(int bgColor) {
+    private GradientDrawable card(int bg) {
         GradientDrawable d = new GradientDrawable();
-        d.setColor(bgColor); d.setCornerRadius(dp(14)); d.setStroke(dp(1), 0xFFE0E4EA);
+        d.setColor(bg); d.setCornerRadius(dp(14)); d.setStroke(dp(1), 0xFFE0E4EA);
         return d;
     }
 
-    private GradientDrawable drawable(int bg, int stroke, int strokeWidth) {
+    private GradientDrawable shape(int bg, int stroke, int sw) {
         GradientDrawable d = new GradientDrawable();
-        d.setColor(bg); d.setCornerRadius(dp(12)); d.setStroke(dp(strokeWidth), stroke);
+        d.setColor(bg); d.setCornerRadius(dp(12)); d.setStroke(dp(sw), stroke);
         return d;
     }
 
-    private GradientDrawable inputDrawable() {
+    private GradientDrawable inputBg() {
         GradientDrawable d = new GradientDrawable();
         d.setColor(Color.WHITE); d.setCornerRadius(dp(10)); d.setStroke(dp(1), 0xFFC0C8D8);
         return d;
@@ -688,32 +835,24 @@ public class Screen3Fragment extends Fragment {
 
     // ── Layout params ─────────────────────────────────────────────────────────
 
-    private LinearLayout.LayoutParams fullParams() {
+    private LinearLayout.LayoutParams fullP() {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        p.setMargins(0, dp(5), 0, dp(5));
-        return p;
+        p.setMargins(0, dp(5), 0, dp(5)); return p;
     }
 
-    private LinearLayout.LayoutParams cardParams() {
+    private LinearLayout.LayoutParams cardP() {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(72));
-        p.setMargins(0, dp(10), 0, dp(14));
-        return p;
+        p.setMargins(0, dp(10), 0, dp(14)); return p;
     }
 
-    private LinearLayout.LayoutParams weightParams() {
+    private LinearLayout.LayoutParams wP() {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
-        p.setMargins(dp(4), dp(4), dp(4), dp(4));
-        return p;
+        p.setMargins(dp(4), dp(4), dp(4), dp(4)); return p;
     }
 
-    private String value(String v) {
-        return (v == null || v.trim().isEmpty()) ? "—" : v;
-    }
-
-    private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
-    }
+    private String v(String s) { return (s==null||s.trim().isEmpty()) ? "—" : s; }
+    private int dp(int v) { return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
 }

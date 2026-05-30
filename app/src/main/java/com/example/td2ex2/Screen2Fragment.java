@@ -147,8 +147,5 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue> {
         }
     }
 
-    @Override
-    public Context getContext() {
-        return requireContext();
-    }
+
 }
