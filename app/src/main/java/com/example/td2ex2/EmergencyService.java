@@ -7,19 +7,22 @@ import java.util.List;
 
 public class EmergencyService implements IssueObserver {
 
-    private static EmergencyService instance;
+    // Double-checked locking — cohérent avec IssueManager
+    private static volatile EmergencyService instance;
 
     private final List<String> alerts = new ArrayList<>();
     private final List<AlertListener> listeners = new ArrayList<>();
 
-    private EmergencyService() {
-    }
+    private EmergencyService() {}
 
     public static EmergencyService getInstance() {
         if (instance == null) {
-            instance = new EmergencyService();
+            synchronized (EmergencyService.class) {
+                if (instance == null) {
+                    instance = new EmergencyService();
+                }
+            }
         }
-
         return instance;
     }
 
@@ -34,7 +37,7 @@ public class EmergencyService implements IssueObserver {
         addAlert(message);
 
         if (issue.getStatusEnum() == Issue.Status.CONFIRMED) {
-            addAlert(" Accident confirmé : envoyer une patrouille / préparer l’intervention pour "
+            addAlert(" Accident confirmé : envoyer une patrouille / préparer l'intervention pour "
                     + issue.getTitle());
         }
 
@@ -68,7 +71,6 @@ public class EmergencyService implements IssueObserver {
     private void addAlert(String message) {
         alerts.add(0, message);
         Log.d("EmergencyService", message);
-
         for (AlertListener listener : listeners) {
             listener.onNewAlert(message);
         }
@@ -78,13 +80,10 @@ public class EmergencyService implements IssueObserver {
         if (alerts.isEmpty()) {
             return "Aucune alerte pour le moment.";
         }
-
         StringBuilder builder = new StringBuilder();
-
         for (String alert : alerts) {
             builder.append("• ").append(alert).append("\n\n");
         }
-
         return builder.toString();
     }
 

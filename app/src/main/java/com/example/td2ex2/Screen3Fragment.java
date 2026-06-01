@@ -239,7 +239,7 @@ public class Screen3Fragment extends Fragment {
     private boolean isValidDate(String j, String m, String a) {
         try {
             int d = Integer.parseInt(j), mo = Integer.parseInt(m), y = Integer.parseInt(a);
-            if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1900 || y > 2025) return false;
+            if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1900 || y > 2100) return false;
             if ((mo==4||mo==6||mo==9||mo==11) && d > 30) return false;
             if (mo == 2) { boolean leap = (y%4==0&&y%100!=0)||(y%400==0); if (d > (leap?29:28)) return false; }
             return true;
@@ -558,9 +558,10 @@ public class Screen3Fragment extends Fragment {
         else if ("Situation préoccupante".equals(gravite))     priority = Issue.Priority.HIGH;
         else                                                    priority = Issue.Priority.MEDIUM;
 
-        AccidentFactory factory = ("Plusieurs véhicules".equals(typeAccident) ||
-                "Collision entre véhicules".equals(typeAccident))
-                ? new HighwayFactory() : new UrbanFactory();
+        // La factory est toujours UrbanFactory : le formulaire ne collecte pas
+        // d'information permettant de distinguer autoroute / urbain de façon fiable.
+        // La priorité est déterminée par la réponse "gravité" de l'utilisateur.
+        AccidentFactory factory = new UrbanFactory();
 
         String titleStr = "Accident — " + prenom + " " + nom;
         String desc = "Tél : " + telephone
@@ -583,8 +584,7 @@ public class Screen3Fragment extends Fragment {
                 notifiable.onDataChange(FRAGMENT_ID, incidentEnCours, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
             modeEdition = false;
         } else {
-            Issue issue = factory.createIssue(titleStr, desc);
-            issue.setPriority(priority);
+            Issue issue = factory.createIssue(titleStr, desc, priority);
             issue.setStatus(2f);
             issue.setLocation(latitude, longitude);
             if (currentPhotoPath != null) issue.setPicture(currentPhotoPath);

@@ -62,9 +62,7 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
             holder.priority        = row.findViewById(R.id.issuePriorityTextView);
             holder.status          = row.findViewById(R.id.issueStatusTextView);
             holder.ratingBar       = row.findViewById(R.id.issueRatingBar);
-            holder.typeTag         = row.findViewById(R.id.issueTypeTag);
-
-            row.setTag(holder);
+                row.setTag(holder);
         } else {
             holder = (ViewHolder) row.getTag();
         }
@@ -75,13 +73,6 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         holder.description.setText(issue.getDescription());
         holder.priority.setText("Gravité : " + formatPriority(issue.getPriority()));
         holder.status.setText(formatStatus(issue.getStatusEnum()));
-
-        // Type tag (Factory pattern visible)
-        if (issue instanceof HighwayIssue) {
-            holder.typeTag.setText("Autoroute");
-        } else {
-            holder.typeTag.setText("Urbain");
-        }
 
         holder.ratingBar.setOnRatingBarChangeListener(null);
         holder.ratingBar.setRating(issue.getStatus());
@@ -139,6 +130,5 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         TextView priority;
         TextView status;
         RatingBar ratingBar;
-        TextView typeTag;
     }
 }

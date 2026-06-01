@@ -38,18 +38,6 @@
                 android:textStyle="bold"
                 android:textColor="@color/text_primary" />
 
-            <TextView
-                android:id="@+id/issueTypeTag"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Autoroute"
-                android:textSize="11sp"
-                android:textColor="@color/primary"
-                android:background="@drawable/bg_option_selected"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp" />
 
         </LinearLayout>
 

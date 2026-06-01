@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -20,22 +19,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Screen 2 — Liste des incidents avec filtres.
+ * Screen 2 — Liste des incidents avec filtre par gravité.
  * Pattern Adapter (07), Observer (09), Parcelable (02).
  */
 public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, ViewObserver {
 
-    public static final int FRAGMENT_ID      = 1;
-    public static final int ACTION_ITEM_CLICKED    = 1;
-    public static final int ACTION_RATING_CHANGED  = 2;
+    public static final int FRAGMENT_ID           = 1;
+    public static final int ACTION_ITEM_CLICKED   = 1;
+    public static final int ACTION_RATING_CHANGED = 2;
 
     private Notifiable notifiable;
     private IssueAdapter adapter;
     private TextView incidentCountText;
 
-    // Filtres actifs
+    // Filtre actif : gravité uniquement
     private String filterGravite = "Tous";
-    private String filterType    = "Tous";
 
     public Screen2Fragment() {}
 
@@ -59,11 +57,8 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         super.onViewCreated(view, savedInstanceState);
 
         incidentCountText = view.findViewById(R.id.incidentCountText);
+        setupGraviteFilter(view);
 
-        // Setup filtres
-        setupFilters(view);
-
-        // Liste partagée via IssueManager
         ArrayList<Issue> issues = getFilteredIssues();
         for (Issue issue : issues) {
             issue.addObserver(EmergencyService.getInstance());
@@ -76,13 +71,10 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         updateCount(issues.size());
     }
 
-    private void setupFilters(View view) {
+    private void setupGraviteFilter(View view) {
         Spinner spinnerGravite = view.findViewById(R.id.spinnerGravite);
-        Spinner spinnerType    = view.findViewById(R.id.spinnerType);
+        if (spinnerGravite == null) return;
 
-        if (spinnerGravite == null || spinnerType == null) return;
-
-        // Filtre gravité
         String[] gravites = {"Tous", "CRITIQUE", "Élevée", "Moyenne", "Faible"};
         ArrayAdapter<String> adapterGravite = new ArrayAdapter<>(
                 requireContext(), android.R.layout.simple_spinner_item, gravites);
@@ -95,41 +87,22 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
             }
             @Override public void onNothingSelected(AdapterView<?> p) {}
         });
-
-        // Filtre type
-        String[] types = {"Tous", "Autoroute", "Urbain"};
-        ArrayAdapter<String> adapterType = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, types);
-        adapterType.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerType.setAdapter(adapterType);
-        spinnerType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                filterType = types[pos];
-                refreshList();
-            }
-            @Override public void onNothingSelected(AdapterView<?> p) {}
-        });
     }
 
     private ArrayList<Issue> getFilteredIssues() {
         ArrayList<Issue> all = IssueManager.getInstance().getIssues();
-        ArrayList<Issue> filtered = new ArrayList<>();
+        if (filterGravite.equals("Tous")) {
+            return new ArrayList<>(all);
+        }
 
+        ArrayList<Issue> filtered = new ArrayList<>();
         for (Issue issue : all) {
-            // Filtre gravité
-            if (!filterGravite.equals("Tous")) {
-                String p = issue.getPriority().name();
-                if (filterGravite.equals("CRITIQUE") && issue.getPriority() != Issue.Priority.CRITICAL) continue;
-                if (filterGravite.equals("Élevée")   && issue.getPriority() != Issue.Priority.HIGH)     continue;
-                if (filterGravite.equals("Moyenne")  && issue.getPriority() != Issue.Priority.MEDIUM)   continue;
-                if (filterGravite.equals("Faible")   && issue.getPriority() != Issue.Priority.LOW)      continue;
+            switch (filterGravite) {
+                case "CRITIQUE": if (issue.getPriority() == Issue.Priority.CRITICAL) filtered.add(issue); break;
+                case "Élevée":   if (issue.getPriority() == Issue.Priority.HIGH)     filtered.add(issue); break;
+                case "Moyenne":  if (issue.getPriority() == Issue.Priority.MEDIUM)   filtered.add(issue); break;
+                case "Faible":   if (issue.getPriority() == Issue.Priority.LOW)      filtered.add(issue); break;
             }
-            // Filtre type
-            if (!filterType.equals("Tous")) {
-                if (filterType.equals("Autoroute") && !(issue instanceof HighwayIssue)) continue;
-                if (filterType.equals("Urbain")    && !(issue instanceof UrbanIssue))   continue;
-            }
-            filtered.add(issue);
         }
         return filtered;
     }
