@@ -117,12 +117,6 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
     }
 
     @Override
-    public void onRatingBarChange(int itemIndex, float value, IssueAdapter adapter, List<Issue> items) {
-        items.get(itemIndex).setStatus(value);
-        adapter.notifyDataSetChanged();
-    }
-
-    @Override
     public void onClickItem(List<Issue> items, int itemIndex) {
         controller.centerMapOnIssue(mapView, items.get(itemIndex));
     }

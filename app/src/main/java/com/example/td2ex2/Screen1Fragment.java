@@ -151,12 +151,11 @@ public class Screen1Fragment extends Fragment {
         }
         addCard(infoCard);
 
-        // ── Statut ────────────────────────────────────────────────────────────
+        // ── Statut : sélecteur interactif ────────────────────────────────────
         LinearLayout statusCard = card();
         statusCard.addView(mkText("📊 Statut de l'intervention", 13, 0xFF1565C0, Typeface.BOLD));
         statusCard.addView(divider());
-        String statusStr = statusLabel(currentIssue.getStatusEnum());
-        statusCard.addView(mkText(statusStr, 16, 0xFF1A1A2E, Typeface.BOLD));
+        statusCard.addView(buildStatusSelector());
         addCard(statusCard);
 
         // ── Photo ─────────────────────────────────────────────────────────────
@@ -382,14 +381,68 @@ public class Screen1Fragment extends Fragment {
         }
     }
 
+    /**
+     * Construit un sélecteur à 3 états : Signalé → Confirmé → Géré.
+     * Le secouriste peut faire avancer le statut depuis la vue détail.
+     */
+    private LinearLayout buildStatusSelector() {
+        // Les 3 états visibles pour le secouriste
+        Issue.Status[] states = {Issue.Status.REPORTED, Issue.Status.CONFIRMED, Issue.Status.RESOLVED};
+        String[]       labels = {" Signalé",            " Confirmé",            " Géré"};
+        int[]          colors = {0xFF546E7A,             0xFF1565C0,             0xFF2E7D32};
+
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(0, dp(4), 0, dp(4));
+
+        Issue.Status current = currentIssue.getStatusEnum();
+        // On normalise : tout ce qui est au-delà de CONFIRMED → RESOLVED pour l'affichage
+        Issue.Status displayState = (current == Issue.Status.REPORTED)  ? Issue.Status.REPORTED
+                                  : (current == Issue.Status.CONFIRMED) ? Issue.Status.CONFIRMED
+                                  : Issue.Status.RESOLVED;
+
+        for (int i = 0; i < states.length; i++) {
+            final Issue.Status targetStatus = states[i];
+            final String label = labels[i];
+            final int color    = colors[i];
+            boolean selected   = (displayState == targetStatus);
+
+            Button btn = new Button(requireContext());
+            btn.setText(label);
+            btn.setAllCaps(false);
+            btn.setTextSize(13);
+            btn.setPadding(dp(8), 0, dp(8), 0);
+
+            if (selected) {
+                btn.setTextColor(Color.WHITE);
+                btn.setBackgroundTintList(
+                    android.content.res.ColorStateList.valueOf(color));
+            } else {
+                btn.setTextColor(color);
+                btn.setBackgroundTintList(
+                    android.content.res.ColorStateList.valueOf(0xFFEEEEEE));
+            }
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            lp.setMargins(dp(3), 0, dp(3), 0);
+
+            btn.setOnClickListener(v -> {
+                currentIssue.setStatus(targetStatus.getRating());
+                // Redessiner la carte statut uniquement
+                render();
+            });
+
+            row.addView(btn, lp);
+        }
+        return row;
+    }
+
     private String statusLabel(Issue.Status s) {
         switch (s) {
             case REPORTED:  return " Signalé";
             case CONFIRMED: return " Confirmé";
-            case ON_SITE:   return " Secours sur place";
-            case CLEARING:  return " Dégagement en cours";
-            case RESOLVED:  return " Résolu";
-            default:        return "—";
+            default:        return " Géré";
         }
     }
 

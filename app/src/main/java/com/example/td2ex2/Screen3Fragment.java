@@ -585,7 +585,7 @@ public class Screen3Fragment extends Fragment {
             modeEdition = false;
         } else {
             Issue issue = factory.createIssue(titleStr, desc, priority);
-            issue.setStatus(2f);
+            issue.setStatus(1f); // REPORTED par défaut
             issue.setLocation(latitude, longitude);
             if (currentPhotoPath != null) issue.setPicture(currentPhotoPath);
 

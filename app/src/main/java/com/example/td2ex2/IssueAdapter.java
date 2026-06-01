@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.RatingBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -61,7 +60,6 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
             holder.description     = row.findViewById(R.id.issueDescriptionTextView);
             holder.priority        = row.findViewById(R.id.issuePriorityTextView);
             holder.status          = row.findViewById(R.id.issueStatusTextView);
-            holder.ratingBar       = row.findViewById(R.id.issueRatingBar);
                 row.setTag(holder);
         } else {
             holder = (ViewHolder) row.getTag();
@@ -73,9 +71,6 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         holder.description.setText(issue.getDescription());
         holder.priority.setText("Gravité : " + formatPriority(issue.getPriority()));
         holder.status.setText(formatStatus(issue.getStatusEnum()));
-
-        holder.ratingBar.setOnRatingBarChangeListener(null);
-        holder.ratingBar.setRating(issue.getStatus());
 
         switch (issue.getPriority()) {
             case CRITICAL:
@@ -91,12 +86,6 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
                 holder.priorityIcon.setImageResource(R.drawable.bg_priority_low);
                 break;
         }
-
-        holder.ratingBar.setOnRatingBarChangeListener((ratingBar, value, fromUser) -> {
-            if (fromUser) {
-                callback.onRatingBarChange(position, value, this, items);
-            }
-        });
 
         row.setOnClickListener(v -> callback.onClickItem(items, position));
 
@@ -116,10 +105,7 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         switch (s) {
             case REPORTED:  return "Signalé";
             case CONFIRMED: return "Confirmé";
-            case ON_SITE:   return "Sur place";
-            case CLEARING:  return "En cours";
-            case RESOLVED:  return "Résolu";
-            default:        return s.name();
+            default:        return "Géré";
         }
     }
 
@@ -129,6 +115,5 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
         TextView description;
         TextView priority;
         TextView status;
-        RatingBar ratingBar;
     }
 }

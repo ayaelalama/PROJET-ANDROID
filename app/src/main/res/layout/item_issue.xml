@@ -79,15 +79,6 @@
 
         </LinearLayout>
 
-        <RatingBar
-            android:id="@+id/issueRatingBar"
-            style="?android:attr/ratingBarStyleSmall"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:numStars="5"
-            android:stepSize="1.0"
-            android:rating="1"
-            android:layout_marginTop="6dp" />
 
     </LinearLayout>
 

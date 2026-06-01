@@ -26,7 +26,6 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
 
     public static final int FRAGMENT_ID           = 1;
     public static final int ACTION_ITEM_CLICKED   = 1;
-    public static final int ACTION_RATING_CHANGED = 2;
 
     private Notifiable notifiable;
     private IssueAdapter adapter;
@@ -143,16 +142,6 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
     private void updateCount(int size) {
         if (incidentCountText != null) {
             incidentCountText.setText(size + " incident" + (size > 1 ? "s" : ""));
-        }
-    }
-
-    @Override
-    public void onRatingBarChange(int itemIndex, float value, IssueAdapter adapter, List<Issue> items) {
-        Issue issue = items.get(itemIndex);
-        issue.setStatus(value);
-        adapter.notifyDataSetChanged();
-        if (notifiable != null) {
-            notifiable.onDataChange(FRAGMENT_ID, issue, ACTION_RATING_CHANGED, value);
         }
     }
 
