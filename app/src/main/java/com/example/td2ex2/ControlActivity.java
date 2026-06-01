@@ -45,7 +45,7 @@ public class ControlActivity extends AppCompatActivity implements Notifiable, Pi
         // Titre de la barre selon le mode
         TextView topBarTitle = findViewById(R.id.topBarTitle);
         if (topBarTitle != null) {
-            topBarTitle.setText(isSecours ? "🚑 Interface Secours" : "🚨 Signaler un accident");
+            topBarTitle.setText(isSecours ? " Interface Secours" : " Signaler un accident");
         }
 
         if (isSecours) {

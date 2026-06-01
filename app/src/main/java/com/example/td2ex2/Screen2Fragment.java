@@ -5,7 +5,11 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,19 +20,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Screen 2 — Liste des incidents signalés.
- * Pattern Adapter (07) via IssueAdapter.
- * Observer (09) : écoute IssueManager pour mise à jour automatique.
+ * Screen 2 — Liste des incidents avec filtres.
+ * Pattern Adapter (07), Observer (09), Parcelable (02).
  */
 public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, ViewObserver {
 
-    public static final int FRAGMENT_ID = 1;
-    public static final int ACTION_ITEM_CLICKED = 1;
-    public static final int ACTION_RATING_CHANGED = 2;
+    public static final int FRAGMENT_ID      = 1;
+    public static final int ACTION_ITEM_CLICKED    = 1;
+    public static final int ACTION_RATING_CHANGED  = 2;
 
     private Notifiable notifiable;
     private IssueAdapter adapter;
     private TextView incidentCountText;
+
+    // Filtres actifs
+    private String filterGravite = "Tous";
+    private String filterType    = "Tous";
 
     public Screen2Fragment() {}
 
@@ -37,8 +44,6 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         super.onAttach(context);
         if (requireActivity() instanceof Notifiable) {
             notifiable = (Notifiable) requireActivity();
-        } else {
-            throw new AssertionError("L'activité doit implémenter Notifiable.");
         }
     }
 
@@ -55,8 +60,11 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
 
         incidentCountText = view.findViewById(R.id.incidentCountText);
 
-        // Liste partagée via IssueManager — même source pour signalant ET secours
-        ArrayList<Issue> issues = IssueManager.getInstance().getIssues();
+        // Setup filtres
+        setupFilters(view);
+
+        // Liste partagée via IssueManager
+        ArrayList<Issue> issues = getFilteredIssues();
         for (Issue issue : issues) {
             issue.addObserver(EmergencyService.getInstance());
         }
@@ -65,7 +73,74 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         adapter = new IssueAdapter(this, issues);
         listView.setAdapter(adapter);
 
-        updateCount();
+        updateCount(issues.size());
+    }
+
+    private void setupFilters(View view) {
+        Spinner spinnerGravite = view.findViewById(R.id.spinnerGravite);
+        Spinner spinnerType    = view.findViewById(R.id.spinnerType);
+
+        if (spinnerGravite == null || spinnerType == null) return;
+
+        // Filtre gravité
+        String[] gravites = {"Tous", "CRITIQUE", "Élevée", "Moyenne", "Faible"};
+        ArrayAdapter<String> adapterGravite = new ArrayAdapter<>(
+                requireContext(), android.R.layout.simple_spinner_item, gravites);
+        adapterGravite.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerGravite.setAdapter(adapterGravite);
+        spinnerGravite.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                filterGravite = gravites[pos];
+                refreshList();
+            }
+            @Override public void onNothingSelected(AdapterView<?> p) {}
+        });
+
+        // Filtre type
+        String[] types = {"Tous", "Autoroute", "Urbain"};
+        ArrayAdapter<String> adapterType = new ArrayAdapter<>(
+                requireContext(), android.R.layout.simple_spinner_item, types);
+        adapterType.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerType.setAdapter(adapterType);
+        spinnerType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                filterType = types[pos];
+                refreshList();
+            }
+            @Override public void onNothingSelected(AdapterView<?> p) {}
+        });
+    }
+
+    private ArrayList<Issue> getFilteredIssues() {
+        ArrayList<Issue> all = IssueManager.getInstance().getIssues();
+        ArrayList<Issue> filtered = new ArrayList<>();
+
+        for (Issue issue : all) {
+            // Filtre gravité
+            if (!filterGravite.equals("Tous")) {
+                String p = issue.getPriority().name();
+                if (filterGravite.equals("CRITIQUE") && issue.getPriority() != Issue.Priority.CRITICAL) continue;
+                if (filterGravite.equals("Élevée")   && issue.getPriority() != Issue.Priority.HIGH)     continue;
+                if (filterGravite.equals("Moyenne")  && issue.getPriority() != Issue.Priority.MEDIUM)   continue;
+                if (filterGravite.equals("Faible")   && issue.getPriority() != Issue.Priority.LOW)      continue;
+            }
+            // Filtre type
+            if (!filterType.equals("Tous")) {
+                if (filterType.equals("Autoroute") && !(issue instanceof HighwayIssue)) continue;
+                if (filterType.equals("Urbain")    && !(issue instanceof UrbanIssue))   continue;
+            }
+            filtered.add(issue);
+        }
+        return filtered;
+    }
+
+    private void refreshList() {
+        if (adapter == null) return;
+        ArrayList<Issue> filtered = getFilteredIssues();
+        adapter.clear();
+        adapter.addAll(filtered);
+        adapter.notifyDataSetChanged();
+        updateCount(filtered.size());
     }
 
     @Override
@@ -73,10 +148,7 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         super.onStart();
         IssueManager.getInstance().addObserver(this);
         if (notifiable != null) notifiable.onFragmentDisplayed(FRAGMENT_ID);
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-            updateCount();
-        }
+        refreshList();
     }
 
     @Override
@@ -85,24 +157,18 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         IssueManager.getInstance().removeObserver(this);
     }
 
-    // Appelé par IssueManager quand un nouvel incident est ajouté
     @Override
     public void onModelChanged(List<Issue> updatedIssues) {
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-            updateCount();
-        }
+        refreshList();
     }
 
     public void addIssue(Issue issue) {
         issue.addObserver(EmergencyService.getInstance());
-        if (adapter != null) adapter.notifyDataSetChanged();
-        updateCount();
+        refreshList();
     }
 
-    private void updateCount() {
+    private void updateCount(int size) {
         if (incidentCountText != null) {
-            int size = IssueManager.getInstance().getIssues().size();
             incidentCountText.setText(size + " incident" + (size > 1 ? "s" : ""));
         }
     }

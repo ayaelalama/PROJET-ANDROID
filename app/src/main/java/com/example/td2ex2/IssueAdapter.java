@@ -113,20 +113,20 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
 
     private String formatPriority(Issue.Priority p) {
         switch (p) {
-            case CRITICAL: return "🔴 CRITIQUE";
-            case HIGH:     return "🟠 ÉLEVÉE";
-            case MEDIUM:   return "🟡 MOYENNE";
-            default:       return "🟢 FAIBLE";
+            case CRITICAL: return "CRITIQUE";
+            case HIGH:     return "ÉLEVÉE";
+            case MEDIUM:   return "MOYENNE";
+            default:       return "FAIBLE";
         }
     }
 
     private String formatStatus(Issue.Status s) {
         switch (s) {
-            case REPORTED:  return "📡 Signalé";
-            case CONFIRMED: return "✅ Confirmé";
-            case ON_SITE:   return "🚑 Sur place";
-            case CLEARING:  return "🔧 En cours";
-            case RESOLVED:  return "☑ Résolu";
+            case REPORTED:  return "Signalé";
+            case CONFIRMED: return "Confirmé";
+            case ON_SITE:   return "Sur place";
+            case CLEARING:  return "En cours";
+            case RESOLVED:  return "Résolu";
             default:        return s.name();
         }
     }

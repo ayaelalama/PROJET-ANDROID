@@ -137,15 +137,15 @@ public class Screen1Fragment extends Fragment {
 
         String ts = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.FRANCE)
                 .format(new java.util.Date(currentIssue.getTimestamp()));
-        header.addView(mkText("🕐 " + ts, 12, 0xCCFFFFFF, Typeface.NORMAL));
+        header.addView(mkText(" " + ts, 12, 0xCCFFFFFF, Typeface.NORMAL));
 
         // ── Description ───────────────────────────────────────────────────────
         LinearLayout infoCard = card();
-        infoCard.addView(mkText("📋 Description", 13, 0xFF1565C0, Typeface.BOLD));
+        infoCard.addView(mkText(" Description", 13, 0xFF1565C0, Typeface.BOLD));
         infoCard.addView(divider());
         infoCard.addView(mkText(currentIssue.getDescription(), 15, 0xFF1A1A2E, Typeface.NORMAL));
         if (currentIssue.getSafetyProtocol() != null && !currentIssue.getSafetyProtocol().isEmpty()) {
-            infoCard.addView(mkText("⚠️ " + currentIssue.getSafetyProtocol(), 13, 0xFFE65100, Typeface.ITALIC));
+            infoCard.addView(mkText(" " + currentIssue.getSafetyProtocol(), 13, 0xFFE65100, Typeface.ITALIC));
         }
         addCard(infoCard);
 
@@ -160,7 +160,7 @@ public class Screen1Fragment extends Fragment {
         // ── Photo ─────────────────────────────────────────────────────────────
         if (currentIssue.getPicture() != null && !currentIssue.getPicture().isEmpty()) {
             LinearLayout photoCard = card();
-            photoCard.addView(mkText("📷 Photo de la scène", 13, 0xFF1565C0, Typeface.BOLD));
+            photoCard.addView(mkText(" Photo de la scène", 13, 0xFF1565C0, Typeface.BOLD));
             photoCard.addView(divider());
 
             ImageView img = new ImageView(requireContext());
@@ -181,7 +181,7 @@ public class Screen1Fragment extends Fragment {
 
         // ── Carte ─────────────────────────────────────────────────────────────
         LinearLayout mapCard = card();
-        mapCard.addView(mkText("📍 Localisation GPS", 13, 0xFF1565C0, Typeface.BOLD));
+        mapCard.addView(mkText(" Localisation GPS", 13, 0xFF1565C0, Typeface.BOLD));
         mapCard.addView(mkText(String.format("%.5f, %.5f",
                 currentIssue.getLatitude(), currentIssue.getLongitude()),
                 13, 0xFF5C6370, Typeface.NORMAL));
@@ -208,22 +208,22 @@ public class Screen1Fragment extends Fragment {
 
         // ── Actions ───────────────────────────────────────────────────────────
         LinearLayout actCard = card();
-        actCard.addView(mkText("🚨 Actions secours", 13, 0xFF1565C0, Typeface.BOLD));
+        actCard.addView(mkText(" Actions secours", 13, 0xFF1565C0, Typeface.BOLD));
         actCard.addView(divider());
 
-        addActionBtn(actCard, "🚔  Envoyer une patrouille", 0xFF1565C0, () -> {
+        addActionBtn(actCard, "  Envoyer une patrouille", 0xFF1565C0, () -> {
             currentIssue.setStatus(2f);
             Toast.makeText(requireContext(), "Patrouille envoyée !", Toast.LENGTH_SHORT).show();
             render();
         });
-        addActionBtn(actCard, "🚑  Contacter les secours", 0xFF2E7D32, () -> {
+        addActionBtn(actCard, "  Contacter les secours", 0xFF2E7D32, () -> {
             currentIssue.setStatus(3f);
             Toast.makeText(requireContext(), "Secours contactés !", Toast.LENGTH_SHORT).show();
             render();
         });
-        addActionBtn(actCard, "🆘  Demander du renfort", 0xFFC62828, () ->
+        addActionBtn(actCard, "  Demander du renfort", 0xFFC62828, () ->
                 Toast.makeText(requireContext(), "Renfort demandé !", Toast.LENGTH_SHORT).show());
-        addActionBtn(actCard, "📋  Voir tous les incidents", 0xFF546E7A, () -> {
+        addActionBtn(actCard, "  Voir tous les incidents", 0xFF546E7A, () -> {
             if (notifiable != null) notifiable.onClick(FRAGMENT_ID);
         });
         addCard(actCard);
@@ -231,7 +231,7 @@ public class Screen1Fragment extends Fragment {
 
     private void showEmpty() {
         LinearLayout card = card();
-        TextView emoji = mkText("🚨", 48, 0xFF1565C0, Typeface.NORMAL);
+        TextView emoji = mkText("", 48, 0xFF1565C0, Typeface.NORMAL);
         emoji.setGravity(Gravity.CENTER);
         card.addView(emoji, fullP());
 
@@ -322,20 +322,20 @@ public class Screen1Fragment extends Fragment {
 
     private String priorityLabel(Issue.Priority p) {
         switch (p) {
-            case CRITICAL: return "🔴 CRITIQUE";
-            case HIGH:     return "🟠 ÉLEVÉE";
-            case MEDIUM:   return "🟡 MOYENNE";
-            default:       return "🟢 FAIBLE";
+            case CRITICAL: return " CRITIQUE";
+            case HIGH:     return " ÉLEVÉE";
+            case MEDIUM:   return " MOYENNE";
+            default:       return " FAIBLE";
         }
     }
 
     private String statusLabel(Issue.Status s) {
         switch (s) {
-            case REPORTED:  return "📥 Signalé";
-            case CONFIRMED: return "✅ Confirmé";
-            case ON_SITE:   return "🚑 Secours sur place";
-            case CLEARING:  return "🔧 Dégagement en cours";
-            case RESOLVED:  return "✔️ Résolu";
+            case REPORTED:  return " Signalé";
+            case CONFIRMED: return " Confirmé";
+            case ON_SITE:   return " Secours sur place";
+            case CLEARING:  return " Dégagement en cours";
+            case RESOLVED:  return " Résolu";
             default:        return "—";
         }
     }

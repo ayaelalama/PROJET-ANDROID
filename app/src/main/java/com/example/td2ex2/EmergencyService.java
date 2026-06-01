@@ -34,17 +34,17 @@ public class EmergencyService implements IssueObserver {
         addAlert(message);
 
         if (issue.getStatusEnum() == Issue.Status.CONFIRMED) {
-            addAlert("🚨 Accident confirmé : envoyer une patrouille / préparer l’intervention pour "
+            addAlert(" Accident confirmé : envoyer une patrouille / préparer l’intervention pour "
                     + issue.getTitle());
         }
 
         if (issue.getStatusEnum() == Issue.Status.ON_SITE) {
-            addAlert("🚑 Secours sur place : intervention en cours pour "
+            addAlert(" Secours sur place : intervention en cours pour "
                     + issue.getTitle());
         }
 
         if (issue.getStatusEnum() == Issue.Status.RESOLVED) {
-            addAlert("✅ Intervention terminée : "
+            addAlert(" Intervention terminée : "
                     + issue.getTitle());
         }
     }
@@ -60,7 +60,7 @@ public class EmergencyService implements IssueObserver {
         addAlert(message);
 
         if (issue.getPriority() == Issue.Priority.CRITICAL) {
-            addAlert("🚨 Gravité critique : renfort nécessaire pour "
+            addAlert(" Gravité critique : renfort nécessaire pour "
                     + issue.getTitle());
         }
     }

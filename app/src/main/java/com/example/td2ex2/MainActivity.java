@@ -4,7 +4,7 @@ import android.content.Intent;
 import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
 import android.text.InputType;
-import android.widget.Button;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 
@@ -17,8 +17,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView animationImageView;
     private AnimationDrawable animationDrawable;
-    private Button defaultButton;
-    private Button optionButton;
+    private View defaultButton;
+    private View optionButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,15 +32,18 @@ public class MainActivity extends AppCompatActivity {
         animationImageView.setImageResource(R.drawable.animation);
         animationDrawable = (AnimationDrawable) animationImageView.getDrawable();
 
-        // Signaler un accident — accès libre
         defaultButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ControlActivity.class);
             intent.putExtra("startScreen", 2);
             startActivity(intent);
         });
 
-        // Interface Secours — code requis
         optionButton.setOnClickListener(v -> showSecoursCodeDialog());
+
+        // Si on arrive depuis une notification secours
+        if (getIntent().getBooleanExtra("open_secours", false)) {
+            showSecoursCodeDialog();
+        }
     }
 
     private void showSecoursCodeDialog() {
@@ -50,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         input.setPadding(48, 32, 48, 32);
 
         new AlertDialog.Builder(this)
-                .setTitle("🚑 Interface Secours")
+                .setTitle("Interface Secours")
                 .setMessage("Accès réservé aux services de secours.\nEntrez le code d'accès (1234) :")
                 .setView(input)
                 .setPositiveButton("Accéder", (dialog, which) -> {
@@ -61,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
                         startActivity(intent);
                     } else {
                         new AlertDialog.Builder(this)
-                                .setTitle("❌ Code incorrect")
+                                .setTitle("Code incorrect")
                                 .setMessage("Le code saisi est invalide.")
                                 .setPositiveButton("Réessayer", (d, w) -> showSecoursCodeDialog())
                                 .setNegativeButton("Annuler", null)

@@ -122,7 +122,7 @@ public class Screen3Fragment extends Fragment {
     private final ActivityResultLauncher<Uri> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (success && currentPhotoPath != null) {
-                    Toast.makeText(requireContext(), "📷 Photo enregistrée !", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), " Photo enregistrée !", Toast.LENGTH_SHORT).show();
                     // Refresh page so preview and button text update
                     showPage();
                 } else {
@@ -279,7 +279,7 @@ public class Screen3Fragment extends Fragment {
         if (stepLabel == null || progressDots == null) return;
         String[] labels = {"Vos informations","Êtes-vous impliqué ?","Type d'accident",
                            "Blessés ?","Gravité","Photo de la scène","Localisation GPS",
-                           "Récapitulatif","✅ Envoyé"};
+                           "Récapitulatif"," Envoyé"};
         stepLabel.setText(page < labels.length ? labels[page] : "");
         progressDots.removeAllViews();
         if (page >= 8) return;
@@ -299,9 +299,9 @@ public class Screen3Fragment extends Fragment {
     // ── Page 0 : Infos personnelles ───────────────────────────────────────────
 
     private void showPersonalInfo() {
-        nextButton.setText("Suivant →");
+        nextButton.setText("Suivant ");
         addTitle("Vos informations");
-        addSubtitle(modeEdition ? "⚠️ Mode modification — corrigez vos informations"
+        addSubtitle(modeEdition ? " Mode modification — corrigez vos informations"
                 : "Ces informations aident les secours à vous identifier.");
 
         TextView req = mkText("* Champs obligatoires", 12, 0xFFD32F2F, Typeface.ITALIC);
@@ -340,7 +340,7 @@ public class Screen3Fragment extends Fragment {
     // ── Pages 1-4 : Questionnaire ─────────────────────────────────────────────
 
     private void showQuestion(String step, String question, String[] options, int qNum) {
-        nextButton.setText("Suivant →");
+        nextButton.setText("Suivant ");
         addTitle("Questionnaire");
 
         TextView stepTv = mkText(step, 13, 0xFF5C6370, Typeface.NORMAL);
@@ -364,7 +364,7 @@ public class Screen3Fragment extends Fragment {
         nextButton.setVisibility(View.GONE);
         backButton.setVisibility(View.VISIBLE);
 
-        addTitle("📷 Photo de la scène");
+        addTitle(" Photo de la scène");
         addSubtitle("Prenez une photo pour aider les secours. (Optionnel)");
 
         photoPreview = new ImageView(requireContext());
@@ -385,7 +385,7 @@ public class Screen3Fragment extends Fragment {
         formContainer.addView(photoPreview, imgP);
 
         Button btnPhoto = new Button(requireContext());
-        btnPhoto.setText(currentPhotoPath != null ? "📷 Reprendre la photo" : "📷 Prendre une photo");
+        btnPhoto.setText(currentPhotoPath != null ? " Reprendre la photo" : " Prendre une photo");
         btnPhoto.setAllCaps(false);
         btnPhoto.setTextColor(Color.WHITE);
         btnPhoto.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1565C0));
@@ -393,13 +393,13 @@ public class Screen3Fragment extends Fragment {
         formContainer.addView(btnPhoto, fullP());
 
         if (currentPhotoPath != null) {
-            TextView ok = mkText("✅ Photo enregistrée", 13, 0xFF2E7D32, Typeface.BOLD);
+            TextView ok = mkText(" Photo enregistrée", 13, 0xFF2E7D32, Typeface.BOLD);
             ok.setGravity(Gravity.CENTER);
             formContainer.addView(ok, fullP());
         }
 
         Button btnNext = new Button(requireContext());
-        btnNext.setText("Suivant →");
+        btnNext.setText("Suivant ");
         btnNext.setAllCaps(false);
         btnNext.setTextColor(Color.WHITE);
         btnNext.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1565C0));
@@ -418,17 +418,17 @@ public class Screen3Fragment extends Fragment {
     // ── Page 6 : GPS ──────────────────────────────────────────────────────────
 
     private void showGpsPage() {
-        nextButton.setText("Suivant →");
+        nextButton.setText("Suivant ");
 
-        addTitle("📍 Localisation GPS");
+        addTitle(" Localisation GPS");
         addSubtitle("Détectez votre position réelle pour guider les secours.");
 
         if (!locationAcquired) requestGPS();
 
         TextView statusTv = mkText(
                 locationAcquired
-                    ? "✅ Position détectée :\n" + String.format("%.5f, %.5f", latitude, longitude)
-                    : "⏳ Récupération de la position en cours…",
+                    ? " Position détectée :\n" + String.format("%.5f, %.5f", latitude, longitude)
+                    : " Récupération de la position en cours…",
                 15,
                 locationAcquired ? 0xFF2E7D32 : 0xFF1565C0,
                 Typeface.BOLD);
@@ -460,7 +460,7 @@ public class Screen3Fragment extends Fragment {
         formContainer.addView(map, mapP);
 
         Button retryBtn = new Button(requireContext());
-        retryBtn.setText("↻ Actualiser la position GPS");
+        retryBtn.setText(" Actualiser la position GPS");
         retryBtn.setAllCaps(false);
         retryBtn.setTextColor(0xFF1565C0);
         retryBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE3F2FD));
@@ -471,27 +471,27 @@ public class Screen3Fragment extends Fragment {
     // ── Page 7 : Récap ────────────────────────────────────────────────────────
 
     private void showRecapPage() {
-        nextButton.setText("✅ Confirmer et envoyer");
+        nextButton.setText(" Confirmer et envoyer");
 
         addTitle("Récapitulatif");
-        addSubtitle("Vérifiez vos informations. Appuyez sur ✏️ pour modifier.");
+        addSubtitle("Vérifiez vos informations. Appuyez sur ✏ pour modifier.");
 
         addRecapEditable("👤 Identité",
                 nom + " " + prenom + "\nTél : " + telephone +
                 "\nNé(e) le : " + jour + "/" + mois + "/" + annee +
                 (adresse.isEmpty() ? "" : "\n" + adresse), 0);
 
-        addRecapEditable("🚨 Accident",
+        addRecapEditable(" Accident",
                 "Impliqué : " + v(concerne) +
                 "\nType : " + v(typeAccident) +
                 "\nBlessés : " + v(blesses) +
                 "\nGravité : " + v(gravite), 2);
 
-        addRecapEditable("📍 Localisation",
+        addRecapEditable(" Localisation",
                 String.format("%.5f, %.5f", latitude, longitude), 6);
 
         if (currentPhotoPath != null) {
-            addSubtitle("📷 Photo jointe :");
+            addSubtitle(" Photo jointe :");
             ImageView mini = new ImageView(requireContext());
             mini.setAdjustViewBounds(true);
             mini.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -503,7 +503,7 @@ public class Screen3Fragment extends Fragment {
                     .fit().centerCrop().into(mini);
             formContainer.addView(mini, imgP);
         } else {
-            TextView noPhoto = mkText("📷 Aucune photo (optionnel)", 13, 0xFF9E9E9E, Typeface.ITALIC);
+            TextView noPhoto = mkText(" Aucune photo (optionnel)", 13, 0xFF9E9E9E, Typeface.ITALIC);
             noPhoto.setGravity(Gravity.CENTER);
             formContainer.addView(noPhoto, fullP());
         }
@@ -521,7 +521,7 @@ public class Screen3Fragment extends Fragment {
         card.setPadding(dp(24), dp(40), dp(24), dp(40));
         card.setBackground(card(Color.WHITE));
 
-        TextView emoji = mkText("✅", 64, 0xFF2E7D32, Typeface.NORMAL);
+        TextView emoji = mkText("", 64, 0xFF2E7D32, Typeface.NORMAL);
         emoji.setGravity(Gravity.CENTER);
         card.addView(emoji, fullP());
 
@@ -571,7 +571,7 @@ public class Screen3Fragment extends Fragment {
                 + "\nBlessés : " + blesses
                 + "\nGravité : " + gravite
                 + "\nGPS : " + String.format("%.5f, %.5f", latitude, longitude)
-                + (currentPhotoPath != null ? "\n📷 Photo jointe" : "");
+                + (currentPhotoPath != null ? "\n Photo jointe" : "");
 
         if (modeEdition && incidentEnCours != null) {
             incidentEnCours.setPriority(priority);
@@ -593,7 +593,11 @@ public class Screen3Fragment extends Fragment {
             issue.addObserver(EmergencyService.getInstance());
             EmergencyService.getInstance().onStatusChanged(issue);
 
+            // Notification pour le signalant (confirmation d'envoi)
             sendLocalNotification(titleStr, "Gravité : " + gravite);
+
+            // Notification pour le secouriste (nouvel incident disponible)
+            SecoursNotificationHelper.notifyNouvelIncident(requireContext(), issue);
             if (notifiable != null)
                 notifiable.onDataChange(FRAGMENT_ID, issue, Notifiable.ACTION_SHOW_ISSUE_DETAILS, null);
         }
@@ -717,7 +721,7 @@ public class Screen3Fragment extends Fragment {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Builder b = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("🚨 " + title)
+                .setContentTitle(" " + title)
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -758,7 +762,7 @@ public class Screen3Fragment extends Fragment {
         TextView t = mkText(title, 13, 0xFF1565C0, Typeface.BOLD);
         t.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         header.addView(t);
-        TextView edit = mkText("✏️ Modifier", 12, 0xFF1565C0, Typeface.NORMAL);
+        TextView edit = mkText("✏ Modifier", 12, 0xFF1565C0, Typeface.NORMAL);
         header.addView(edit);
         card.addView(header, fullP());
 
