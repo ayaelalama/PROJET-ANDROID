@@ -1,5 +1,6 @@
 package com.example.td2ex2;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,11 +23,11 @@ public class IssueAdapter extends ArrayAdapter<Issue> {
     private final ClickableIssue<Issue> callback;
     private final LayoutInflater inflater;
 
-    public IssueAdapter(@NonNull ClickableIssue<Issue> callback, @NonNull List<Issue> items) {
-        super(callback.getContext(), 0, items);
+    public IssueAdapter(@NonNull android.content.Context context, @NonNull ClickableIssue<Issue> callback, @NonNull List<Issue> items) {
+        super(context, 0, items);
         this.items = items;
         this.callback = callback;
-        this.inflater = LayoutInflater.from(callback.getContext());
+        this.inflater = LayoutInflater.from(context);
     }
 
     @Override

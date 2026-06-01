@@ -71,7 +71,7 @@ public class Screen5Fragment extends Fragment implements ViewObserver, Clickable
         mapView.setTileSource(TileSourceFactory.MAPNIK);
         mapView.setMultiTouchControls(true);
 
-        adapter = new IssueAdapter(this, model.getIssues());
+        adapter = new IssueAdapter(requireContext(), this, model.getIssues());
         listView.setAdapter(adapter);
 
         model.addObserver(this);

@@ -1,6 +1,8 @@
 package com.example.td2ex2;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -211,19 +213,9 @@ public class Screen1Fragment extends Fragment {
         actCard.addView(mkText(" Actions secours", 13, 0xFF1565C0, Typeface.BOLD));
         actCard.addView(divider());
 
-        addActionBtn(actCard, "  Envoyer une patrouille", 0xFF1565C0, () -> {
-            currentIssue.setStatus(2f);
-            Toast.makeText(requireContext(), "Patrouille envoyée !", Toast.LENGTH_SHORT).show();
-            render();
-        });
-        addActionBtn(actCard, "  Contacter les secours", 0xFF2E7D32, () -> {
-            currentIssue.setStatus(3f);
-            Toast.makeText(requireContext(), "Secours contactés !", Toast.LENGTH_SHORT).show();
-            render();
-        });
-        addActionBtn(actCard, "  Demander du renfort", 0xFFC62828, () ->
-                Toast.makeText(requireContext(), "Renfort demandé !", Toast.LENGTH_SHORT).show());
-        addActionBtn(actCard, "  Voir tous les incidents", 0xFF546E7A, () -> {
+        addCallBtn(actCard, "Envoyer une ambulance", "SAMU — 15", 0xFF2E7D32, 0xFFE8F5E9, "15");
+        addCallBtn(actCard, "Contacter les pompiers", "Sapeurs-pompiers — 18", 0xFFE65100, 0xFFFFF3E0, "18");
+        addActionBtn(actCard, "Voir tous les incidents", 0xFF546E7A, () -> {
             if (notifiable != null) notifiable.onClick(FRAGMENT_ID);
         });
         addCard(actCard);
@@ -263,6 +255,67 @@ public class Screen1Fragment extends Fragment {
         LinearLayout.LayoutParams p = fullP();
         p.setMargins(0, 0, 0, dp(12));
         container.addView(card, p);
+    }
+
+    private void addCallBtn(LinearLayout parent, String label, String subtitle,
+                            int color, int bgColor, String number) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(roundedBg(bgColor, dp(14)));
+
+        // Icone
+        LinearLayout iconBg = new LinearLayout(requireContext());
+        iconBg.setGravity(android.view.Gravity.CENTER);
+        iconBg.setBackground(roundedBg(darken(bgColor), dp(10)));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(40), dp(40));
+        android.widget.ImageView icon = new android.widget.ImageView(requireContext());
+        icon.setImageResource(android.R.drawable.ic_menu_call);
+        icon.setColorFilter(color);
+        icon.setPadding(dp(8), dp(8), dp(8), dp(8));
+        iconBg.addView(icon);
+        row.addView(iconBg, iconLp);
+
+        // Textes
+        LinearLayout texts = new LinearLayout(requireContext());
+        texts.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        textLp.setMargins(dp(12), 0, 0, 0);
+        texts.setLayoutParams(textLp);
+
+        TextView t1 = mkText(label, 15, color, android.graphics.Typeface.BOLD);
+        t1.setPadding(0, 0, 0, 0);
+        texts.addView(t1);
+        TextView t2 = mkText(subtitle, 12, 0xFF9E9E9E, android.graphics.Typeface.NORMAL);
+        t2.setPadding(0, dp(2), 0, 0);
+        texts.addView(t2);
+        row.addView(texts);
+
+        // Numéro
+        TextView num = mkText(number, 22, color, android.graphics.Typeface.BOLD);
+        num.setPadding(dp(8), 0, 0, 0);
+        row.addView(num);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(58));
+        lp.setMargins(0, 0, 0, dp(10));
+        parent.addView(row, lp);
+
+        row.setOnClickListener(v -> {
+            Intent callIntent = new Intent(Intent.ACTION_DIAL);
+            callIntent.setData(Uri.parse("tel:" + number));
+            startActivity(callIntent);
+        });
+    }
+
+    private int darken(int color) {
+        // Légèrement plus foncé pour le fond de l'icône
+        int r = Math.max(0, ((color >> 16) & 0xFF) - 20);
+        int g = Math.max(0, ((color >> 8)  & 0xFF) - 20);
+        int b = Math.max(0, (color         & 0xFF) - 20);
+        return (0xFF << 24) | (r << 16) | (g << 8) | b;
     }
 
     private void addActionBtn(LinearLayout parent, String label, int color, Runnable action) {

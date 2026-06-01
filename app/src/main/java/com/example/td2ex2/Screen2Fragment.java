@@ -70,7 +70,7 @@ public class Screen2Fragment extends Fragment implements ClickableIssue<Issue>, 
         }
 
         ListView listView = view.findViewById(R.id.issueListView);
-        adapter = new IssueAdapter(this, issues);
+        adapter = new IssueAdapter(requireContext(), this, issues);
         listView.setAdapter(adapter);
 
         updateCount(issues.size());
